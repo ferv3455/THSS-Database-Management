@@ -6,6 +6,7 @@ import cn.edu.thssdb.utils.Pair;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import cn.edu.thssdb.storage.Storage;
 
 public class Table implements Iterable<Row> {
   ReentrantReadWriteLock lock;
@@ -13,6 +14,7 @@ public class Table implements Iterable<Row> {
   public String tableName;
   public ArrayList<Column> columns;
   public BPlusTree<Entry, Row> index;
+  public  Storage storage;
   private int primaryIndex;
 
   public Table(String databaseName, String tableName, Column[] columns) {
@@ -33,6 +35,21 @@ public class Table implements Iterable<Row> {
 
   public void update() {
     // TODO
+  }
+
+  public void persist()
+  {
+    try {
+      lock.readLock().lock();
+      storage.persist();
+    }
+    finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public void dropSelf(){
+
   }
 
   private void serialize() {
