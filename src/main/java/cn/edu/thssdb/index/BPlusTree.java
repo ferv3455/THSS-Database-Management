@@ -1,8 +1,11 @@
 package cn.edu.thssdb.index;
 
-import cn.edu.thssdb.utils.Pair;
+import cn.edu.thssdb.schema.Entry;
+import cn.edu.thssdb.schema.Row;
 
-public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pair<K, V>> {
+import java.util.Iterator;
+
+public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<javafx.util.Pair<Entry, Row>> {
 
   BPlusTreeNode<K, V> root;
   private int size;
@@ -58,7 +61,7 @@ public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pai
   }
 
   @Override
-  public BPlusTreeIterator<K, V> iterator() {
-    return new BPlusTreeIterator<>(this);
+  public Iterator<javafx.util.Pair<Entry, Row>> iterator() {
+    return new BPlusTreeIterator<K,V>(this);
   }
 }

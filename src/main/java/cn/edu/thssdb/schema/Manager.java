@@ -11,6 +11,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static cn.edu.thssdb.utils.Global.DATA_DIRECTORY;
 
 public class Manager {
+
+
     private HashMap<String, Database> databases;
     private Database currentDB;//当前使用的
     private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
