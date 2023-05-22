@@ -75,4 +75,8 @@ public class Pair<L, R> implements Serializable {
   public String toString() {
     return "<" + left + "," + right + ">";
   }
+
+  public L getKey() {
+    return left;
+  }
 }

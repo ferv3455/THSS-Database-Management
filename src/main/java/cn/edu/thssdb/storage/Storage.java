@@ -6,7 +6,7 @@ import cn.edu.thssdb.index.BPlusTree;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import javafx.scene.chart.ScatterChart;
-import javafx.util.Pair;
+import cn.edu.thssdb.utils.Pair;
 
 import java.io.*;
 import java.nio.file.Files;
