@@ -2,6 +2,7 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.exception.*;
 import cn.edu.thssdb.index.BPlusTree;
+import cn.edu.thssdb.storage.Storage;
 import cn.edu.thssdb.utils.Pair;
 
 import java.io.File;
@@ -10,7 +11,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import cn.edu.thssdb.storage.Storage;
 
 import static cn.edu.thssdb.utils.Global.DATA_DIRECTORY;
 
@@ -20,7 +20,7 @@ public class Table implements Iterable<Row> {
   public String tableName;
   public ArrayList<Column> columns;
   public BPlusTree<Entry, Row> index;
-  public  Storage storage;
+  public Storage storage;
   private int primaryIndex;
 
   public Table(String databaseName, String tableName, Column[] columns) {
@@ -28,11 +28,10 @@ public class Table implements Iterable<Row> {
     this.databaseName = databaseName;
     this.tableName = tableName;
     this.columns = new ArrayList<>(Arrays.asList(columns));
-    for (int i = 0; i < this.columns.size(); i++){
-      if(this.columns.get(i).getPrimary() == 1)
-        primaryIndex = i;
+    for (int i = 0; i < this.columns.size(); i++) {
+      if (this.columns.get(i).getPrimary() == 1) primaryIndex = i;
     }
-    if(primaryIndex < 0 || primaryIndex >= this.columns.size()){
+    if (primaryIndex < 0 || primaryIndex >= this.columns.size()) {
       throw new PrimaryNotExistException(tableName);
     }
     this.storage = new Storage(databaseName, tableName);
@@ -41,7 +40,7 @@ public class Table implements Iterable<Row> {
   }
 
   private void recover() {
-    //TODO
+    // TODO
     File dir = new File(DATA_DIRECTORY);
     File[] fileList = dir.listFiles();
     if (fileList == null) {
@@ -80,10 +79,9 @@ public class Table implements Iterable<Row> {
     }
   }
 
-
   public void insert(ArrayList<Column> columns, ArrayList<Entry> entries) {
-    //TODO
-    //分解为以下三个子函数，分别负责数据库插入，
+    // TODO
+    // 分解为以下三个子函数，分别负责数据库插入，
     validateInput(columns, entries);
 
     // Match columns and reorder entries
@@ -102,12 +100,12 @@ public class Table implements Iterable<Row> {
       throw new LengthNotMatchException(schemaLen, columns.size());
   }
 
-  private ArrayList<Entry> reorderEntriesAccordingToSchema(ArrayList<Column> columns, ArrayList<Entry> entries) {
+  private ArrayList<Entry> reorderEntriesAccordingToSchema(
+      ArrayList<Column> columns, ArrayList<Entry> entries) {
     ArrayList<Entry> orderedEntries = new ArrayList<>();
     for (Column column : this.columns) {
       int matchedIndex = columns.indexOf(column);
-      if (matchedIndex == -1)
-        throw new SchemaNotMatchException(column.toString());
+      if (matchedIndex == -1) throw new SchemaNotMatchException(column.toString());
 
       orderedEntries.add(entries.get(matchedIndex));
     }
@@ -124,9 +122,8 @@ public class Table implements Iterable<Row> {
   }
 
   public void delete(Entry primaryEntry) {
-    //TODO
-    if (primaryEntry == null)
-      throw new KeyNotExistException(null);
+    // TODO
+    if (primaryEntry == null) throw new KeyNotExistException(null);
 
     try {
       lock.writeLock().lock();
@@ -135,7 +132,6 @@ public class Table implements Iterable<Row> {
       lock.writeLock().unlock();
     }
   }
-
 
   /**
    * Method to update a row in a table or cache.
@@ -189,21 +185,18 @@ public class Table implements Iterable<Row> {
         }
       }
       // If the column is not found, throw KeyNotExistException.
-      if (!isMatched)
-        throw new KeyNotExistException(column.toString());
+      if (!isMatched) throw new KeyNotExistException(column.toString());
       i++;
     }
 
     return targetKeys;
   }
 
-  public void persist()
-  {
+  public void persist() {
     try {
       lock.readLock().lock();
       storage.persist();
-    }
-    finally {
+    } finally {
       lock.readLock().unlock();
     }
   }
@@ -216,8 +209,7 @@ public class Table implements Iterable<Row> {
    * @throws KeyNotExistException if the primary key is null or does not exist.
    */
   public Row get(Entry entry) {
-    if (entry == null)
-      throw new KeyNotExistException(null);
+    if (entry == null) throw new KeyNotExistException(null);
 
     Row row;
     try {
@@ -229,10 +221,7 @@ public class Table implements Iterable<Row> {
     return row;
   }
 
-
-  /**
-   * Method to drop the table from the cache and delete its data files.
-   */
+  /** Method to drop the table from the cache and delete its data files. */
   public void dropSelf() {
     try {
       lock.writeLock().lock();
@@ -244,22 +233,17 @@ public class Table implements Iterable<Row> {
     }
   }
 
-  /**
-   * Method to drop the table from the cache.
-   */
+  /** Method to drop the table from the cache. */
   private void dropFromStorage() {
     storage.dropSelf();
     storage = null;
   }
 
-  /**
-   * Method to delete the data files of the table.
-   */
+  /** Method to delete the data files of the table. */
   private void deleteDataFiles() {
     File dir = new File(DATA_DIRECTORY);
     File[] fileList = dir.listFiles();
-    if (fileList == null)
-      return;
+    if (fileList == null) return;
     for (File f : fileList) {
       if (f.isFile() && isDataFileOfTable(f)) {
         boolean deleted = f.delete();
@@ -283,14 +267,11 @@ public class Table implements Iterable<Row> {
     return this.databaseName.equals(databaseName) && this.tableName.equals(tableName);
   }
 
-  /**
-   * Method to clear the columns of the table.
-   */
+  /** Method to clear the columns of the table. */
   private void clearColumns() {
     columns.clear();
     columns = null;
   }
-
 
   private void serialize() {
     // TODO
@@ -299,7 +280,7 @@ public class Table implements Iterable<Row> {
   private ArrayList<Row> deserialize(File file) {
     // TODO
     ArrayList<Row> rows = null;
-    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) { //不需要显式关闭
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) { // 不需要显式关闭
       rows = (ArrayList<Row>) ois.readObject();
     } catch (IOException | ClassNotFoundException e) {
       e.printStackTrace();
@@ -316,9 +297,10 @@ public class Table implements Iterable<Row> {
   public String toString() {
     String name = this.tableName;
     String top = "Column Name, Column Type, Primary, Is Null, Max Length";
-    StringBuilder result = new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
-    for(Column column : this.columns) {
-      if(column != null) {
+    StringBuilder result =
+        new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
+    for (Column column : this.columns) {
+      if (column != null) {
         result.append(column.toString()).append("\n");
       }
     }
@@ -346,7 +328,6 @@ public class Table implements Iterable<Row> {
     return this.primaryIndex;
   }
 
-
   private class TableIterator implements Iterator<Row> {
     private Iterator<Pair<Entry, Row>> iterator;
     private final LinkedList<Entry> q;
@@ -356,8 +337,7 @@ public class Table implements Iterable<Row> {
       mStorage = table.storage;
       iterator = table.storage.getIndexIter();
       q = new LinkedList<>();
-      while (iterator.hasNext())
-      {
+      while (iterator.hasNext()) {
         q.add(iterator.next().getKey());
       }
       iterator = null;

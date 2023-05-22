@@ -1,10 +1,6 @@
 package cn.edu.thssdb.index;
 
-import cn.edu.thssdb.schema.Entry;
-import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.utils.Pair;
-
-import java.util.Iterator;
 
 public final class BPlusTree<K extends Comparable<K>, V> implements Iterable<Pair<K, V>> {
 

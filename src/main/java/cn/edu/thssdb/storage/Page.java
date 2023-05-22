@@ -1,77 +1,75 @@
 package cn.edu.thssdb.storage;
 
 import cn.edu.thssdb.schema.Entry;
-import cn.edu.thssdb.schema.Row;
 
 import java.util.ArrayList;
+
 public class Page {
-    public static final int maxSize = 2048;
-    private int id;
-    private int size;
-    private ArrayList<Entry> entries;
-    private long lastVisit;
-    private Boolean edit;
-    private Boolean Pinned;   // whether is pinned in a transaction
-    private String pageFile;
-    public Page(String name, int id) {
-        this.id = id;
-        this.size = 0;
-        this.entries = new ArrayList<>();
-        this.lastVisit = System.currentTimeMillis();
-        this.Pinned = false;
-        pageFile = "page_" + name + "_" + id + ".data";
-    }
+  public static final int maxSize = 2048;
+  private int id;
+  private int size;
+  private ArrayList<Entry> entries;
+  private long lastVisit;
+  private Boolean edit;
+  private Boolean Pinned; // whether is pinned in a transaction
+  private String pageFile;
 
-    public int getId() {
-        return id;
-    }
+  public Page(String name, int id) {
+    this.id = id;
+    this.size = 0;
+    this.entries = new ArrayList<>();
+    this.lastVisit = System.currentTimeMillis();
+    this.Pinned = false;
+    pageFile = "page_" + name + "_" + id + ".data";
+  }
 
-    public int getSize() {
-        return size;
-    }
+  public int getId() {
+    return id;
+  }
 
-    public ArrayList<Entry> getEntries() {
-        return entries;
-    }
+  public int getSize() {
+    return size;
+  }
 
-    public void insertEntry(Entry entry, int length)
-    {
-        size += length;
-        entries.add(entry);
-    }
+  public ArrayList<Entry> getEntries() {
+    return entries;
+  }
 
-    public void removeEntry(Entry entry, int length)
-    {
-        size -= length;
-        entries.remove(entry);
-    }
+  public void insertEntry(Entry entry, int length) {
+    size += length;
+    entries.add(entry);
+  }
 
-    public long getLastVisit() {
-        return lastVisit;
-    }
+  public void removeEntry(Entry entry, int length) {
+    size -= length;
+    entries.remove(entry);
+  }
 
-    public Boolean getEdit() {
-        return edit;
-    }
+  public long getLastVisit() {
+    return lastVisit;
+  }
 
-    public Boolean getPinned() {
-        return Pinned;
-    }
+  public Boolean getEdit() {
+    return edit;
+  }
 
-    public String getPageFile() {
-        return pageFile;
-    }
+  public Boolean getPinned() {
+    return Pinned;
+  }
 
-    public void setLastVisit() {
-        this.lastVisit = System.currentTimeMillis();
-    }
+  public String getPageFile() {
+    return pageFile;
+  }
 
-    public void setEdit(Boolean edit) {
-        this.edit = edit;
-    }
+  public void setLastVisit() {
+    this.lastVisit = System.currentTimeMillis();
+  }
 
-    public void setPinned(Boolean pinned) {
-        Pinned = pinned;
-    }
+  public void setEdit(Boolean edit) {
+    this.edit = edit;
+  }
 
+  public void setPinned(Boolean pinned) {
+    Pinned = pinned;
+  }
 }
