@@ -51,6 +51,15 @@ public class IServiceHandler implements IService.Iface {
     LogicalPlan plan = LogicalGenerator.generate(req.statement);
     switch (plan.getType()) {
       case CREATE_DB:
+      case DROP_DB:
+      case USE_DB:
+      case CREATE_TB:
+      case DROP_TB:
+      case SHOW_TB:
+      case INSERT:
+      case DELETE:
+      case UPDATE:
+      case SELECT:
         System.out.println("[DEBUG] " + plan);
         return new ExecuteStatementResp(StatusUtil.success(), false);
       default:
