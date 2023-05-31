@@ -47,11 +47,14 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitCreateTableStmt(SQLParser.CreateTableStmtContext ctx) {
-    List<Pair<String, String>> columns = ctx.columnDef().stream()
-            .map(item -> new Pair<>(item.columnName().getText(),item.typeName().getText()))
+    List<Pair<String, String>> columns =
+        ctx.columnDef().stream()
+            .map(item -> new Pair<>(item.columnName().getText(), item.typeName().getText()))
             .collect(Collectors.toList());
-    List<String> primaryKey = ctx.tableConstraint().columnName().stream()
-            .map(RuleContext::getText).collect(Collectors.toList());
+    List<String> primaryKey =
+        ctx.tableConstraint().columnName().stream()
+            .map(RuleContext::getText)
+            .collect(Collectors.toList());
     return new CreateTablePlan(ctx.tableName().getText(), columns, primaryKey);
   }
 
@@ -68,11 +71,13 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitInsertStmt(SQLParser.InsertStmtContext ctx) {
-    List<String> columns = ctx.columnName().stream()
-            .map(RuleContext::getText).collect(Collectors.toList());
-    List<List<String>> values = ctx.valueEntry().stream()
-            .map(item -> item.literalValue().stream()
-                    .map(i -> i.getText()).collect(Collectors.toList()))
+    List<String> columns =
+        ctx.columnName().stream().map(RuleContext::getText).collect(Collectors.toList());
+    List<List<String>> values =
+        ctx.valueEntry().stream()
+            .map(
+                item ->
+                    item.literalValue().stream().map(i -> i.getText()).collect(Collectors.toList()))
             .collect(Collectors.toList());
     return new InsertPlan(ctx.tableName().getText(), values, columns);
   }
@@ -84,15 +89,16 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitUpdateStmt(SQLParser.UpdateStmtContext ctx) {
-    return new UpdatePlan(ctx.tableName().getText(),
-            ctx.columnName().getText(), ctx.expression(),
-            ctx.multipleCondition());
+    return new UpdatePlan(
+        ctx.tableName().getText(),
+        ctx.columnName().getText(),
+        ctx.expression(),
+        ctx.multipleCondition());
   }
 
   @Override
   public LogicalPlan visitSelectStmt(SQLParser.SelectStmtContext ctx) {
-    return new SelectPlan(ctx.resultColumn(), ctx.tableQuery(),
-            ctx.multipleCondition());
+    return new SelectPlan(ctx.resultColumn(), ctx.tableQuery(), ctx.multipleCondition());
   }
 
   // TODO: parser to more logical plan

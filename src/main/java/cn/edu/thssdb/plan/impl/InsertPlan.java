@@ -24,37 +24,35 @@ import java.util.List;
 
 public class InsertPlan extends LogicalPlan {
 
-    private String tableName;
-    private List<List<String>> values;
-    private List<String> columns;
+  private String tableName;
+  private List<List<String>> values;
+  private List<String> columns;
 
-    public InsertPlan(String tableName,
-                      List<List<String>> values,
-                      List<String> columns) {
-        super(LogicalPlanType.INSERT);
-        this.tableName = tableName;
-        this.values = values;
-        this.columns = columns;
-    }
+  public InsertPlan(String tableName, List<List<String>> values, List<String> columns) {
+    super(LogicalPlanType.INSERT);
+    this.tableName = tableName;
+    this.values = values;
+    this.columns = columns;
+  }
 
-    public String getTableName() {
-        return tableName;
-    }
+  public String getTableName() {
+    return tableName;
+  }
 
-    public List<List<String>> getValues() {
-        return values;
-    }
+  public List<List<String>> getValues() {
+    return values;
+  }
 
-    public List<String> getColumns() {
-        return columns;
-    }
+  public List<String> getColumns() {
+    return columns;
+  }
 
-    @Override
-    public String toString() {
-        return "InsertPlan{" +
-                String.format("tableName='%s' ", tableName) +
-                String.format("values=%s ", values) +
-                String.format("columns=%s", columns) +
-                "}";
-    }
+  @Override
+  public String toString() {
+    return "InsertPlan{"
+        + String.format("tableName='%s' ", tableName)
+        + String.format("values=%s ", values)
+        + String.format("columns=%s", columns)
+        + "}";
+  }
 }

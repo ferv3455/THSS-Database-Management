@@ -29,9 +29,8 @@ public class CreateTablePlan extends LogicalPlan {
   private List<Pair<String, String>> columns;
   private List<String> primaryKey;
 
-  public CreateTablePlan(String tableName,
-                         List<Pair<String, String>> columns,
-                         List<String> primaryKey) {
+  public CreateTablePlan(
+      String tableName, List<Pair<String, String>> columns, List<String> primaryKey) {
     super(LogicalPlanType.CREATE_TB);
     this.tableName = tableName;
     this.columns = columns;
@@ -52,10 +51,10 @@ public class CreateTablePlan extends LogicalPlan {
 
   @Override
   public String toString() {
-    return "CreateTablePlan{" +
-            String.format("tableName='%s' ", tableName) +
-            String.format("columns=%s ", columns) +
-            String.format("primaryKey=%s", primaryKey) +
-            "}";
+    return "CreateTablePlan{"
+        + String.format("tableName='%s' ", tableName)
+        + String.format("columns=%s ", columns)
+        + String.format("primaryKey=%s", primaryKey)
+        + "}";
   }
 }

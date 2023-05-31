@@ -23,45 +23,46 @@ import cn.edu.thssdb.sql.SQLParser;
 
 public class UpdatePlan extends LogicalPlan {
 
-    private String tableName;
-    private String columnName;
-    private SQLParser.ExpressionContext expression;
-    private SQLParser.MultipleConditionContext condition;
+  private String tableName;
+  private String columnName;
+  private SQLParser.ExpressionContext expression;
+  private SQLParser.MultipleConditionContext condition;
 
-    public UpdatePlan(String tableName,
-                      String columnName,
-                      SQLParser.ExpressionContext expression,
-                      SQLParser.MultipleConditionContext condition) {
-        super(LogicalPlanType.UPDATE);
-        this.tableName = tableName;
-        this.columnName = columnName;
-        this.expression = expression;
-        this.condition = condition;
-    }
+  public UpdatePlan(
+      String tableName,
+      String columnName,
+      SQLParser.ExpressionContext expression,
+      SQLParser.MultipleConditionContext condition) {
+    super(LogicalPlanType.UPDATE);
+    this.tableName = tableName;
+    this.columnName = columnName;
+    this.expression = expression;
+    this.condition = condition;
+  }
 
-    public String getTableName() {
-        return tableName;
-    }
+  public String getTableName() {
+    return tableName;
+  }
 
-    public String getColumnName() {
-        return columnName;
-    }
+  public String getColumnName() {
+    return columnName;
+  }
 
-    public SQLParser.ExpressionContext getExpression() {
-        return expression;
-    }
+  public SQLParser.ExpressionContext getExpression() {
+    return expression;
+  }
 
-    public SQLParser.MultipleConditionContext getCondition() {
-        return condition;
-    }
+  public SQLParser.MultipleConditionContext getCondition() {
+    return condition;
+  }
 
-    @Override
-    public String toString() {
-        return "UpdatePlan{" +
-                String.format("tableName='%s' ", tableName) +
-                String.format("columnName='%s' ", columnName) +
-                String.format("expression='%s' ", expression) +
-                String.format("condition='%s'", condition) +
-                "}";
-    }
+  @Override
+  public String toString() {
+    return "UpdatePlan{"
+        + String.format("tableName='%s' ", tableName)
+        + String.format("columnName='%s' ", columnName)
+        + String.format("expression='%s' ", expression)
+        + String.format("condition='%s'", condition)
+        + "}";
+  }
 }

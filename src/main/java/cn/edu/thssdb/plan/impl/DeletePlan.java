@@ -23,29 +23,28 @@ import cn.edu.thssdb.sql.SQLParser;
 
 public class DeletePlan extends LogicalPlan {
 
-    private String tableName;
-    private SQLParser.MultipleConditionContext condition;
+  private String tableName;
+  private SQLParser.MultipleConditionContext condition;
 
-    public DeletePlan(String tableName,
-                      SQLParser.MultipleConditionContext condition) {
-        super(LogicalPlanType.DELETE);
-        this.tableName = tableName;
-        this.condition = condition;
-    }
+  public DeletePlan(String tableName, SQLParser.MultipleConditionContext condition) {
+    super(LogicalPlanType.DELETE);
+    this.tableName = tableName;
+    this.condition = condition;
+  }
 
-    public String getTableName() {
-        return tableName;
-    }
+  public String getTableName() {
+    return tableName;
+  }
 
-    public SQLParser.MultipleConditionContext getCondition() {
-        return condition;
-    }
+  public SQLParser.MultipleConditionContext getCondition() {
+    return condition;
+  }
 
-    @Override
-    public String toString() {
-        return "DeletePlan{" +
-                String.format("tableName='%s' ", tableName) +
-                String.format("condition='%s'", condition) +
-                "}";
-    }
+  @Override
+  public String toString() {
+    return "DeletePlan{"
+        + String.format("tableName='%s' ", tableName)
+        + String.format("condition='%s'", condition)
+        + "}";
+  }
 }

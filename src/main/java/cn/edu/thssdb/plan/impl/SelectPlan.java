@@ -25,37 +25,38 @@ import java.util.List;
 
 public class SelectPlan extends LogicalPlan {
 
-    private List<SQLParser.ResultColumnContext> resultColumn;
-    private List<SQLParser.TableQueryContext> tableQuery;
-    private SQLParser.MultipleConditionContext condition;
+  private List<SQLParser.ResultColumnContext> resultColumn;
+  private List<SQLParser.TableQueryContext> tableQuery;
+  private SQLParser.MultipleConditionContext condition;
 
-    public SelectPlan(List<SQLParser.ResultColumnContext> resultColumn,
-                      List<SQLParser.TableQueryContext> tableQuery,
-                      SQLParser.MultipleConditionContext condition) {
-        super(LogicalPlanType.UPDATE);
-        this.resultColumn = resultColumn;
-        this.tableQuery = tableQuery;
-        this.condition = condition;
-    }
+  public SelectPlan(
+      List<SQLParser.ResultColumnContext> resultColumn,
+      List<SQLParser.TableQueryContext> tableQuery,
+      SQLParser.MultipleConditionContext condition) {
+    super(LogicalPlanType.SELECT);
+    this.resultColumn = resultColumn;
+    this.tableQuery = tableQuery;
+    this.condition = condition;
+  }
 
-    public List<SQLParser.ResultColumnContext> getResultColumn() {
-        return resultColumn;
-    }
+  public List<SQLParser.ResultColumnContext> getResultColumn() {
+    return resultColumn;
+  }
 
-    public List<SQLParser.TableQueryContext> getTableQuery() {
-        return tableQuery;
-    }
+  public List<SQLParser.TableQueryContext> getTableQuery() {
+    return tableQuery;
+  }
 
-    public SQLParser.MultipleConditionContext getCondition() {
-        return condition;
-    }
+  public SQLParser.MultipleConditionContext getCondition() {
+    return condition;
+  }
 
-    @Override
-    public String toString() {
-        return "SelectPlan{" +
-                String.format("resultColumn='%s' ", resultColumn) +
-                String.format("tableQuery='%s' ", tableQuery) +
-                String.format("condition='%s'", condition) +
-                "}";
-    }
+  @Override
+  public String toString() {
+    return "SelectPlan{"
+        + String.format("resultColumn='%s' ", resultColumn)
+        + String.format("tableQuery='%s' ", tableQuery)
+        + String.format("condition='%s'", condition)
+        + "}";
+  }
 }

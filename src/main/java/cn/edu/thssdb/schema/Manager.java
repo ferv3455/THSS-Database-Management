@@ -2,9 +2,14 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.exception.DatabaseNotExistException;
 import cn.edu.thssdb.exception.IOFileException;
+import cn.edu.thssdb.sql.SQLLexer;
+import cn.edu.thssdb.sql.SQLParser;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -14,21 +19,27 @@ public class Manager {
 
   private HashMap<String, Database> databases;
   private Database currentDB; // 当前使用的
-  private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  public ArrayList<Long> transaction_sessions;           //List of sessions in transaction state
+  public ArrayList<Long> session_queue;                  //Session queue blocked by lock
+  public HashMap<Long, ArrayList<String>> s_lock_dict;       //记录每个session取得了哪些表的s锁
+  public HashMap<Long, ArrayList<String>> x_lock_dict;       //记录每个session取得了哪些表的x锁
+  private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   public static Manager getInstance() {
     return Manager.ManagerHolder.INSTANCE;
   }
 
   public Manager() {
-    // TODO
     databases = new HashMap<>();
+    s_lock_dict = new HashMap<>();
+    x_lock_dict = new HashMap<>();
     currentDB = null;
+    transaction_sessions = new ArrayList<>();
+    session_queue = new ArrayList<>();
     recover();
   }
 
   public void createDatabaseIfNotExists(String name) {
-    // TODO
     try {
       lock.writeLock().lock();
       if (!databases.containsKey(name)) databases.put(name, new Database(name));
@@ -55,13 +66,23 @@ public class Manager {
   }
 
   public void switchDatabase(String name) {
-    // TODO
     try {
       lock.readLock().lock();
       if (!databases.containsKey(name)) throw new DatabaseNotExistException(name);
       currentDB = databases.get(name);
     } finally {
       lock.readLock().unlock();
+    }
+  }
+
+  public void persistdb(String databaseName) {
+    try {
+      lock.writeLock().lock();
+      Database db = databases.get(databaseName);
+      db.quit();
+      persist();
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
@@ -130,4 +151,5 @@ public class Manager {
 
     private ManagerHolder() {}
   }
+
 }

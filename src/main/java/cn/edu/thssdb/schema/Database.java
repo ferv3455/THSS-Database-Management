@@ -3,8 +3,7 @@ package cn.edu.thssdb.schema;
 import cn.edu.thssdb.exception.DuplicateTableException;
 import cn.edu.thssdb.exception.IOFileException;
 import cn.edu.thssdb.exception.TableNotExistException;
-import cn.edu.thssdb.query.QueryResult;
-import cn.edu.thssdb.query.QueryTable;
+import cn.edu.thssdb.query.*;
 import cn.edu.thssdb.type.ColumnType;
 
 import java.io.*;
@@ -72,7 +71,6 @@ public class Database {
   }
 
   public void drop(String name) {
-    // TODO
     try {
       lock.writeLock().lock();
       if (!tables.containsKey(name)) throw new TableNotExistException(name);
@@ -122,8 +120,8 @@ public class Database {
     }
   }
 
-  private void recover() { // 从外存读入该数据库的元数据文件，并建表
-    // TODO
+  // 从外存读入该数据库的元数据文件，并建表
+  private void recover() {
     // 打开数据文件夹
     File dir = new File(DATA_DIRECTORY);
     File[] fileList = null;
@@ -169,7 +167,6 @@ public class Database {
   }
 
   public void quit() {
-    // TODO
     try {
       lock.writeLock().lock();
       for (Table table : tables.values()) { // 对每个表持久化
@@ -180,4 +177,116 @@ public class Database {
       lock.writeLock().unlock();
     }
   }
+
+  /**
+   * Inserts data into a table.
+   *
+   * @param table_name The name of the table where the data will be inserted.
+   * @param column_names An optional parameter that specifies the column names for the insertion.
+   *                     If null, all values will be inserted in the order they appear.
+   * @param values An array of values corresponding to the column names (if provided) or the table's columns.
+   *               These values will be inserted into the table.
+   */
+  public void insert(String table_name, String[] column_names, String[] values) {
+    Table the_table = get(table_name);
+    if(column_names == null)
+    {
+      the_table.insert(values);
+    }
+    else
+    {
+      the_table.insert(column_names, values);
+    }
+  }
+
+  public String get_name()
+  {
+    return name;
+  }
+
+  //显示单个表
+  public String ShowOneTable(String tableName) {
+    Table table = get(tableName);
+    return table.toString();
+  }
+
+  /**
+   * Returns a string representation of the database.
+   *
+   * @return A string containing the database name and the details of its tables.
+   */
+  public String toString() {
+    String top = "Database Name: " + name;
+    String result = top + "\n" + "\n";
+
+    if (tables.isEmpty()) {
+      return "Empty database!";
+    }
+
+    for (Table the_table : tables.values()) {
+      if (the_table == null) {
+        continue;
+      }
+      result += the_table.toString();
+    }
+
+    return result;
+  }
+
+  //处理删除元素（逻辑）
+  public String delete(String table_name, Logic the_logic) {
+    Table the_table = get(table_name);
+    return the_table.delete(the_logic);
+  }
+
+  //更新元素
+  public String update(String table_name, String column_name, Comparer value, Logic the_logic) {
+    Table the_table = get(table_name);
+    return the_table.update(column_name, value, the_logic);
+  }
+
+  /**
+   * Builds a single query table for the specified table name.
+   *
+   * @param table_name The name of the table.
+   * @return A QueryTable representing the specified table.
+   * @throws TableNotExistException If the table does not exist.
+   */
+  public QueryTable buildSingleQueryTable(String table_name) {
+    try {
+      lock.readLock().lock();
+      if (tables.containsKey(table_name)) {
+        return new SingleTable(tables.get(table_name));
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
+    throw new TableNotExistException(table_name);
+  }
+
+
+  /**
+   * Builds a joint query table by connecting multiple tables based on the specified table names and logic.
+   *
+   * @param table_names The names of the tables to be connected.
+   * @param logic       The logic used to connect the tables.
+   * @return The connected query table.
+   * @throws TableNotExistException If the specified table does not exist.
+   */
+  public QueryTable buildJointQueryTable(ArrayList<String> table_names, Logic logic) {
+    ArrayList<Table> my_tables = new ArrayList<>();
+    try {
+      lock.readLock().lock();
+      for (String table_name : table_names) {
+        if (!tables.containsKey(table_name)) {
+          throw new TableNotExistException(table_name);
+        }
+        my_tables.add(tables.get(table_name));
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
+    return new JointTable(my_tables, logic);
+  }
+
 }
