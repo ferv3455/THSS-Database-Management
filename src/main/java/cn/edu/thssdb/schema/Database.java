@@ -182,29 +182,25 @@ public class Database {
    * Inserts data into a table.
    *
    * @param table_name The name of the table where the data will be inserted.
-   * @param column_names An optional parameter that specifies the column names for the insertion.
-   *                     If null, all values will be inserted in the order they appear.
-   * @param values An array of values corresponding to the column names (if provided) or the table's columns.
-   *               These values will be inserted into the table.
+   * @param column_names An optional parameter that specifies the column names for the insertion. If
+   *     null, all values will be inserted in the order they appear.
+   * @param values An array of values corresponding to the column names (if provided) or the table's
+   *     columns. These values will be inserted into the table.
    */
   public void insert(String table_name, String[] column_names, String[] values) {
     Table the_table = get(table_name);
-    if(column_names == null)
-    {
+    if (column_names == null) {
       the_table.insert(values);
-    }
-    else
-    {
+    } else {
       the_table.insert(column_names, values);
     }
   }
 
-  public String get_name()
-  {
+  public String get_name() {
     return name;
   }
 
-  //显示单个表
+  // 显示单个表
   public String ShowOneTable(String tableName) {
     Table table = get(tableName);
     return table.toString();
@@ -233,13 +229,13 @@ public class Database {
     return result;
   }
 
-  //处理删除元素（逻辑）
+  // 处理删除元素（逻辑）
   public String delete(String table_name, Logic the_logic) {
     Table the_table = get(table_name);
     return the_table.delete(the_logic);
   }
 
-  //更新元素
+  // 更新元素
   public String update(String table_name, String column_name, Comparer value, Logic the_logic) {
     Table the_table = get(table_name);
     return the_table.update(column_name, value, the_logic);
@@ -264,12 +260,12 @@ public class Database {
     throw new TableNotExistException(table_name);
   }
 
-
   /**
-   * Builds a joint query table by connecting multiple tables based on the specified table names and logic.
+   * Builds a joint query table by connecting multiple tables based on the specified table names and
+   * logic.
    *
    * @param table_names The names of the tables to be connected.
-   * @param logic       The logic used to connect the tables.
+   * @param logic The logic used to connect the tables.
    * @return The connected query table.
    * @throws TableNotExistException If the specified table does not exist.
    */
@@ -288,5 +284,4 @@ public class Database {
     }
     return new JointTable(my_tables, logic);
   }
-
 }

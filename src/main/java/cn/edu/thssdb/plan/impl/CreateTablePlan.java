@@ -19,42 +19,29 @@
 package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
-import cn.edu.thssdb.utils.Pair;
-
-import java.util.List;
+import cn.edu.thssdb.schema.Column;
 
 public class CreateTablePlan extends LogicalPlan {
 
-  private String tableName;
-  private List<Pair<String, String>> columns;
-  private List<String> primaryKey;
+  private final String tableName;
+  private final Column[] columns;
 
-  public CreateTablePlan(
-      String tableName, List<Pair<String, String>> columns, List<String> primaryKey) {
+  public CreateTablePlan(String tableName, Column[] columns) {
     super(LogicalPlanType.CREATE_TB);
     this.tableName = tableName;
     this.columns = columns;
-    this.primaryKey = primaryKey;
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public List<Pair<String, String>> getColumns() {
+  public Column[] getColumns() {
     return columns;
-  }
-
-  public List<String> getPrimaryKey() {
-    return primaryKey;
   }
 
   @Override
   public String toString() {
-    return "CreateTablePlan{"
-        + String.format("tableName='%s' ", tableName)
-        + String.format("columns=%s ", columns)
-        + String.format("primaryKey=%s", primaryKey)
-        + "}";
+    return "CreateTablePlan{" + String.format("tableName='%s'", tableName) + "}";
   }
 }

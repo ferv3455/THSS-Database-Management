@@ -17,6 +17,7 @@ public abstract class LogicalPlan {
     CREATE_DB,
     DROP_DB,
     USE_DB,
+    SHOW_DB,
     CREATE_TB,
     DROP_TB,
     SHOW_TB,
@@ -24,5 +25,9 @@ public abstract class LogicalPlan {
     DELETE,
     UPDATE,
     SELECT,
+
+    COLUMN_DEF,
+    TB_CONSTRAINT,
+    TYPE_NAME,
   }
 }

@@ -20,21 +20,14 @@ package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
 
-public class DropTablePlan extends LogicalPlan {
+public class ShowDatabasePlan extends LogicalPlan {
 
-  private final String tableName;
-
-  public DropTablePlan(String tableName) {
-    super(LogicalPlanType.DROP_TB);
-    this.tableName = tableName;
-  }
-
-  public String getTableName() {
-    return tableName;
+  public ShowDatabasePlan() {
+    super(LogicalPlanType.SHOW_DB);
   }
 
   @Override
   public String toString() {
-    return "DropTablePlan{" + "tableName='" + tableName + '\'' + '}';
+    return "ShowDatabasePlan{}";
   }
 }
