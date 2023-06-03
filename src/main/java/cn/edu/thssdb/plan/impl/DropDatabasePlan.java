@@ -22,7 +22,7 @@ import cn.edu.thssdb.plan.LogicalPlan;
 
 public class DropDatabasePlan extends LogicalPlan {
 
-  private String databaseName;
+  private final String databaseName;
 
   public DropDatabasePlan(String databaseName) {
     super(LogicalPlanType.DROP_DB);

@@ -7,9 +7,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-/**
- * Abstract base class for query tables.
- */
+/** Abstract base class for query tables. */
 public abstract class QueryTable implements Iterator<Row> {
   LinkedList<JointRow> mQueue;
   Logic mLogicSelect;
@@ -28,7 +26,6 @@ public abstract class QueryTable implements Iterator<Row> {
   public void SetLogicSelect(Logic selectLogic) {
     this.mLogicSelect = selectLogic;
   }
-
 
   @Override
   public boolean hasNext() {

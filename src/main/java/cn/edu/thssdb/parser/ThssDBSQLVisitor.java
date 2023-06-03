@@ -18,13 +18,17 @@
  */
 package cn.edu.thssdb.parser;
 
+import cn.edu.thssdb.exception.KeyNotExistException;
+import cn.edu.thssdb.exception.OtherException;
 import cn.edu.thssdb.plan.LogicalPlan;
 import cn.edu.thssdb.plan.impl.*;
+import cn.edu.thssdb.schema.Column;
 import cn.edu.thssdb.sql.SQLBaseVisitor;
 import cn.edu.thssdb.sql.SQLParser;
-import cn.edu.thssdb.utils.Pair;
+import cn.edu.thssdb.type.ColumnType;
 import org.antlr.v4.runtime.RuleContext;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,16 +50,110 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
   }
 
   @Override
+  public LogicalPlan visitShowDbStmt(SQLParser.ShowDbStmtContext ctx) {
+    return new ShowDatabasePlan();
+  }
+
+  @Override
+  public LogicalPlan visitTypeName(SQLParser.TypeNameContext ctx) {
+    if (ctx.T_INT() != null) {
+      return new TypeNamePlan(ColumnType.INT, -1);
+    } else if (ctx.T_LONG() != null) {
+      return new TypeNamePlan(ColumnType.LONG, -1);
+    } else if (ctx.T_FLOAT() != null) {
+      return new TypeNamePlan(ColumnType.FLOAT, -1);
+    } else if (ctx.T_DOUBLE() != null) {
+      return new TypeNamePlan(ColumnType.DOUBLE, -1);
+    } else if (ctx.T_STRING() != null) {
+      return new TypeNamePlan(ColumnType.STRING, Integer.parseInt(ctx.NUMERIC_LITERAL().getText()));
+    }
+    return null;
+  }
+
+  @Override
+  public LogicalPlan visitColumnDef(SQLParser.ColumnDefContext ctx) {
+    String name = ctx.columnName().getText();
+    TypeNamePlan typeNamePlan = (TypeNamePlan) visitTypeName(ctx.typeName());
+    ColumnType type = typeNamePlan.getVarType();
+    int primary = 0;
+    boolean not_null = false;
+    int maxLength = typeNamePlan.getMaxLength();
+
+    // Constraints
+    boolean pkDef = false;
+    boolean nnDef = false;
+    for (SQLParser.ColumnConstraintContext cnstr_ctx : ctx.columnConstraint()) {
+      if (cnstr_ctx.K_PRIMARY() != null) {
+        if (!pkDef) {
+          pkDef = true;
+          continue;
+        }
+      } else if (cnstr_ctx.K_KEY() != null) {
+        if (pkDef) {
+          pkDef = false;
+          primary = 1;
+          continue;
+        }
+      } else if (cnstr_ctx.K_NOT() != null) {
+        if (!nnDef) {
+          nnDef = true;
+          continue;
+        }
+      } else if (cnstr_ctx.K_NULL() != null) {
+        if (nnDef) {
+          nnDef = false;
+          not_null = true;
+          continue;
+        }
+      }
+      throw new OtherException();
+    }
+
+    Column column = new Column(name, type, primary, not_null, maxLength);
+    return new ColumnDefPlan(column);
+  }
+
+  @Override
+  public LogicalPlan visitTableConstraint(SQLParser.TableConstraintContext ctx) {
+    String[] columns = new String[ctx.columnName().size()];
+    int i = 0;
+    for (SQLParser.ColumnNameContext col_ctx : ctx.columnName()) {
+      columns[i++] = col_ctx.getText();
+    }
+    return new TableConstraintPlan(columns);
+  }
+
+  @Override
   public LogicalPlan visitCreateTableStmt(SQLParser.CreateTableStmtContext ctx) {
-    List<Pair<String, String>> columns =
-        ctx.columnDef().stream()
-            .map(item -> new Pair<>(item.columnName().getText(), item.typeName().getText()))
-            .collect(Collectors.toList());
-    List<String> primaryKey =
-        ctx.tableConstraint().columnName().stream()
-            .map(RuleContext::getText)
-            .collect(Collectors.toList());
-    return new CreateTablePlan(ctx.tableName().getText(), columns, primaryKey);
+    ArrayList<Column> columnList = new ArrayList<>();
+
+    // Process each column definition
+    for (SQLParser.ColumnDefContext columnDef : ctx.columnDef()) {
+      ColumnDefPlan plan = (ColumnDefPlan) visitColumnDef(columnDef);
+      columnList.add(plan.getColumn());
+    }
+
+    // Process table constraint: primary keys
+    if (ctx.tableConstraint() != null) {
+      TableConstraintPlan tc_plan =
+          (TableConstraintPlan) visitTableConstraint(ctx.tableConstraint());
+      for (String columnName : tc_plan.getColumnNames()) {
+        found:
+        {
+          for (Column column : columnList) {
+            if (column.getName().equals(columnName)) {
+              column.setPrimary(1);
+              break found;
+            }
+          }
+          throw new KeyNotExistException(columnName);
+        }
+      }
+    }
+
+    Column[] columns = new Column[columnList.size()];
+    columns = columnList.toArray(columns);
+    return new CreateTablePlan(ctx.tableName().getText(), columns);
   }
 
   @Override
@@ -65,7 +163,6 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitShowTableStmt(SQLParser.ShowTableStmtContext ctx) {
-
     return new ShowTablePlan(ctx.tableName().getText());
   }
 
