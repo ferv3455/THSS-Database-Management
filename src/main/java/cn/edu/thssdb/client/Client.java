@@ -118,23 +118,43 @@ public class Client {
       ExecuteStatementResp resp = client.executeStatement(req);
       if (resp.status.code == Global.SUCCESS_CODE) {
         if (resp.hasResult) {
-          StringBuilder column_str = new StringBuilder();
+          // Calculate width of each column
           int column_size = resp.columnsList.size();
+          int[] column_width = new int[column_size];
           for (int i = 0; i < column_size; ++i) {
-            column_str.append(resp.columnsList.get(i));
-            if (i != column_size - 1) column_str.append(", ");
+            column_width[i] = resp.columnsList.get(i).length();
+            for (List<String> row : resp.rowList) {
+              int width = row.get(i).length();
+              if (width > column_width[i]) column_width[i] = width;
+            }
+          }
+
+          StringBuilder separator = new StringBuilder();
+          for (int i = 0; i < column_size; ++i) {
+            separator.append("+").append(new String(new char[column_width[i] + 2]).replace("\0", "-"));
+            if (i == column_size - 1) separator.append("+");
+          }
+          println(separator.toString());
+
+          StringBuilder column_str = new StringBuilder();
+          for (int i = 0; i < column_size; ++i) {
+            column_str.append(String.format(String.format("| %%-%ds ", column_width[i]), resp.columnsList.get(i)));
+            if (i == column_size - 1) column_str.append("|");
           }
           println(column_str.toString());
-          println("----------------------------------------------------------------");
+
+          println(separator.toString());
 
           for (List<String> row : resp.rowList) {
             StringBuilder row_str = new StringBuilder();
             for (int i = 0; i < column_size; ++i) {
-              row_str.append(row.get(i));
-              if (i != column_size - 1) row_str.append(", ");
+              row_str.append(String.format(String.format("| %%-%ds ", column_width[i]), row.get(i)));
+              if (i == column_size - 1) row_str.append("|");
             }
             println(row_str.toString());
           }
+
+          println(separator.toString());
         } else {
           println(resp.status.getMsg());
         }
