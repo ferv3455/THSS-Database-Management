@@ -134,7 +134,8 @@ public class Table implements Iterable<Row> {
     HashMap<Integer, File> pageFileList = new HashMap<>();
     int pageNum = 0;
 
-    for (File file : fileList) {
+    for (int i = 1; i < fileList.length; i ++) {
+      File file = fileList[i];
       if (file != null && file.isFile()) {
         try {
           String fileName = file.getName();
@@ -159,7 +160,7 @@ public class Table implements Iterable<Row> {
     for (int i = 1; i <= pageNum; i++) {
       File file = pageFileList.get(i);
       ArrayList<Row> rows = deserialize(file);
-      storage.insertPage(rows, primaryIndex);
+      this.storage.insertPage(rows, primaryIndex);
     }
   }
 
@@ -215,7 +216,7 @@ public class Table implements Iterable<Row> {
   private void writeToStorage(ArrayList<Entry> orderedEntries) {
     try {
       lock.writeLock().lock();
-      storage.insertRow(orderedEntries, primaryIndex);
+      this.storage.insertRow(orderedEntries, primaryIndex);
     } finally {
       lock.writeLock().unlock();
     }
@@ -238,7 +239,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } finally {
       lock.writeLock().unlock();
     }
@@ -377,7 +378,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      storage.insertRow(orderedEntries, primaryIndex);
+      this.storage.insertRow(orderedEntries, primaryIndex);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -403,7 +404,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -479,7 +480,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -528,7 +529,7 @@ public class Table implements Iterable<Row> {
   private void executeDelete(Entry primaryEntry, boolean isTransaction) {
     try {
       lock.writeLock().lock();
-      storage.deleteRow(primaryEntry, primaryIndex, isTransaction);
+      this.storage.deleteRow(primaryEntry, primaryIndex, isTransaction);
     } finally {
       lock.writeLock().unlock();
     }
@@ -610,7 +611,7 @@ public class Table implements Iterable<Row> {
 
     try {
       lock.writeLock().lock();
-      storage.updateRow(primaryEntry, primaryIndex, targetKeys, updateEntries, isTransaction);
+      this.storage.updateRow(primaryEntry, primaryIndex, targetKeys, updateEntries, isTransaction);
     } catch (KeyNotExistException | DuplicateKeyException e) {
       throw e;
     } finally {
@@ -717,7 +718,7 @@ public class Table implements Iterable<Row> {
   public void persist() {
     try {
       lock.readLock().lock();
-      storage.persist();
+      this.storage.persist();
     } finally {
       lock.readLock().unlock();
     }
@@ -736,7 +737,7 @@ public class Table implements Iterable<Row> {
     Row row;
     try {
       lock.readLock().lock();
-      row = storage.getRow(entry, primaryIndex);
+      row = this.storage.getRow(entry, primaryIndex);
     } finally {
       lock.readLock().unlock();
     }
@@ -757,8 +758,8 @@ public class Table implements Iterable<Row> {
 
   /** Method to drop the table from the cache. */
   private void dropFromStorage() {
-    storage.dropSelf();
-    storage = null;
+    this.storage.dropSelf();
+    this.storage = null;
   }
 
   /** Method to delete the data files of the table. */
@@ -766,7 +767,8 @@ public class Table implements Iterable<Row> {
     File dir = new File(DATA_DIRECTORY);
     File[] fileList = dir.listFiles();
     if (fileList == null) return;
-    for (File f : fileList) {
+    for (int i = 1; i < fileList.length; i ++) {
+      File f = fileList[i];
       if (f.isFile() && isDataFileOfTable(f)) {
         boolean deleted = f.delete();
         if (!deleted) {

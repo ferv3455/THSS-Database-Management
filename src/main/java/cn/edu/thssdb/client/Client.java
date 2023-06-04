@@ -131,14 +131,18 @@ public class Client {
 
           StringBuilder separator = new StringBuilder();
           for (int i = 0; i < column_size; ++i) {
-            separator.append("+").append(new String(new char[column_width[i] + 2]).replace("\0", "-"));
+            separator
+                .append("+")
+                .append(new String(new char[column_width[i] + 2]).replace("\0", "-"));
             if (i == column_size - 1) separator.append("+");
           }
           println(separator.toString());
 
           StringBuilder column_str = new StringBuilder();
           for (int i = 0; i < column_size; ++i) {
-            column_str.append(String.format(String.format("| %%-%ds ", column_width[i]), resp.columnsList.get(i)));
+            column_str.append(
+                String.format(
+                    String.format("| %%-%ds ", column_width[i]), resp.columnsList.get(i)));
             if (i == column_size - 1) column_str.append("|");
           }
           println(column_str.toString());
@@ -148,7 +152,8 @@ public class Client {
           for (List<String> row : resp.rowList) {
             StringBuilder row_str = new StringBuilder();
             for (int i = 0; i < column_size; ++i) {
-              row_str.append(String.format(String.format("| %%-%ds ", column_width[i]), row.get(i)));
+              row_str.append(
+                  String.format(String.format("| %%-%ds ", column_width[i]), row.get(i)));
               if (i == column_size - 1) row_str.append("|");
             }
             println(row_str.toString());
