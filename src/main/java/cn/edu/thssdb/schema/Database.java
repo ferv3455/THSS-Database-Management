@@ -32,7 +32,7 @@ public class Database {
   private void persist() { // 持久化方法
     // TODO
     for (Table table : tables.values()) {
-      String filename = DATA_DIRECTORY + "meta_" + name + "_" + table.tableName + ".data";
+      String filename = DATA_DIRECTORY + "meta#_#" + name + "#_#" + table.tableName + ".data";
       ArrayList<Column> columns = table.columns;
       try {
         FileOutputStream f = new FileOutputStream(filename);
@@ -77,7 +77,7 @@ public class Database {
       lock.writeLock().lock();
       if (!tables.containsKey(name)) throw new TableNotExistException(name);
 
-      String metaFilename = DATA_DIRECTORY + "meta_" + this.name + "_" + name + ".data";
+      String metaFilename = DATA_DIRECTORY + "meta#_#" + this.name + "#_#" + name + ".data";
       File metaFile = new File(metaFilename);
       if (metaFile.isFile()) {
         if (metaFile.delete()) {
@@ -109,7 +109,7 @@ public class Database {
   public void dropSelf() {
     try {
       lock.writeLock().lock();
-      final String filenamePrefix = DATA_DIRECTORY + "meta_" + this.name + "_";
+      final String filenamePrefix = DATA_DIRECTORY + "meta#_#" + this.name + "#_#";
       for (Table table : tables.values()) {
         File metaFile = new File(filenamePrefix + table.tableName + ".data");
         if (metaFile.isFile()) { // 删除元数据文件
@@ -144,7 +144,7 @@ public class Database {
     for (File f : fileList) { // 对每个文件，判断是否是元数据文件
       if (!f.isFile()) continue;
       try {
-        String[] parts = f.getName().split("\\.")[0].split("_");
+        String[] parts = f.getName().split("\\.")[0].split("#_#");
         if (!parts[0].equals(meta)) continue;
         if (!parts[1].equals(this.name)) continue;
         String tableName = parts[2]; // 此时说明该文件是元数据文件

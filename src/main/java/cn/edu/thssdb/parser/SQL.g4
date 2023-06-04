@@ -97,16 +97,16 @@ updateStmt :
         K_SET columnName '=' expression ( K_WHERE multipleCondition )? ;
 
 beginTransactionStmt :
-    K_BEGIN K_TRANSACTION;
+    K_BEGIN K_TRANSACTION ;
 
 commitStmt :
-    K_COMMIT;
+    K_COMMIT ;
 
 autoBeginTransactionStmt :
-    K_AUTOBEGIN K_TRANSACTION;
+    K_AUTOBEGIN K_TRANSACTION ;
 
 autoCommitStmt :
-    K_AUTOCOMMIT;
+    K_AUTOCOMMIT ;
 
 columnDef :
     columnName typeName columnConstraint* ;

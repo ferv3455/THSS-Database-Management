@@ -369,6 +369,16 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
   }
 
   @Override
+  public LogicalPlan visitBeginTransactionStmt(SQLParser.BeginTransactionStmtContext ctx) {
+    return new BeginTransactionPlan();
+  }
+
+  @Override
+  public LogicalPlan visitCommitStmt(SQLParser.CommitStmtContext ctx) {
+    return new CommitPlan();
+  }
+
+  @Override
   public LogicalPlan visitQuitStmt(SQLParser.QuitStmtContext ctx) {
     return new QuitPlan();
   }
