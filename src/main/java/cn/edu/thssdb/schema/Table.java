@@ -134,8 +134,7 @@ public class Table implements Iterable<Row> {
     HashMap<Integer, File> pageFileList = new HashMap<>();
     int pageNum = 0;
 
-    for (int i = 1; i < fileList.length; i ++) {
-      File file = fileList[i];
+    for (File file : fileList) {
       if (file != null && file.isFile()) {
         try {
           String fileName = file.getName();
@@ -160,7 +159,7 @@ public class Table implements Iterable<Row> {
     for (int i = 1; i <= pageNum; i++) {
       File file = pageFileList.get(i);
       ArrayList<Row> rows = deserialize(file);
-      this.storage.insertPage(rows, primaryIndex);
+      storage.insertPage(rows, primaryIndex);
     }
   }
 
@@ -202,7 +201,7 @@ public class Table implements Iterable<Row> {
    * @throws SchemaNotMatchException if the input schema does not match
    */
   private ArrayList<Entry> reorderEntriesAccordingToSchema(
-      ArrayList<Column> columns, ArrayList<Entry> entries) {
+          ArrayList<Column> columns, ArrayList<Entry> entries) {
     ArrayList<Entry> orderedEntries = new ArrayList<>();
     for (Column column : this.columns) {
       int matchedIndex = columns.indexOf(column);
@@ -216,7 +215,7 @@ public class Table implements Iterable<Row> {
   private void writeToStorage(ArrayList<Entry> orderedEntries) {
     try {
       lock.writeLock().lock();
-      this.storage.insertRow(orderedEntries, primaryIndex);
+      storage.insertRow(orderedEntries, primaryIndex);
     } finally {
       lock.writeLock().unlock();
     }
@@ -231,7 +230,7 @@ public class Table implements Iterable<Row> {
    * @throws DuplicateKeyException if the row to be inserted conflicts with an existing one
    */
   public void insert(
-      ArrayList<Column> columns, ArrayList<Entry> entries, boolean isTransaction) { //
+          ArrayList<Column> columns, ArrayList<Entry> entries, boolean isTransaction) { //
     validateInput(columns, entries);
 
     ArrayList<Entry> orderedEntries = reorderEntriesAccordingToSchema(columns, entries);
@@ -239,7 +238,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } finally {
       lock.writeLock().unlock();
     }
@@ -354,9 +353,9 @@ public class Table implements Iterable<Row> {
       throw new NullValueException(column.getName());
     }
     if (column.getType() == ColumnType.STRING
-        && newValue != null
-        && column.getMaxLength() >= 0
-        && newValue.toString().length() > column.getMaxLength()) {
+            && newValue != null
+            && column.getMaxLength() >= 0
+            && newValue.toString().length() > column.getMaxLength()) {
       throw new ValueLengthExceedException(column.getName());
     }
   }
@@ -378,7 +377,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      this.storage.insertRow(orderedEntries, primaryIndex);
+      storage.insertRow(orderedEntries, primaryIndex);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -404,7 +403,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -420,8 +419,8 @@ public class Table implements Iterable<Row> {
 
     int schemaLen = this.columns.size();
     if (columns.length > schemaLen
-        || values.length > schemaLen
-        || columns.length != values.length) {
+            || values.length > schemaLen
+            || columns.length != values.length) {
       throw new LengthNotMatchException(schemaLen, Math.max(columns.length, values.length));
     }
 
@@ -441,9 +440,9 @@ public class Table implements Iterable<Row> {
       }
 
       Comparable entryValue =
-          (matches == 0 || index < 0 || index >= columns.length)
-              ? null
-              : ParseValue(column, values[index]);
+              (matches == 0 || index < 0 || index >= columns.length)
+                      ? null
+                      : ParseValue(column, values[index]);
 
       validateValue(column, entryValue);
       orderedEntries.add(new Entry(entryValue));
@@ -472,7 +471,7 @@ public class Table implements Iterable<Row> {
     ArrayList<Entry> orderedEntries = new ArrayList<>();
     for (int i = 0; i < this.columns.size(); i++) {
       Comparable the_entry_value =
-          i < values.length ? ParseValue(this.columns.get(i), values[i]) : null;
+              i < values.length ? ParseValue(this.columns.get(i), values[i]) : null;
       validateValue(this.columns.get(i), the_entry_value);
       orderedEntries.add(new Entry(the_entry_value));
     }
@@ -480,7 +479,7 @@ public class Table implements Iterable<Row> {
     // write to cache
     try {
       lock.writeLock().lock();
-      this.storage.insertRow(orderedEntries, primaryIndex, isTransaction);
+      storage.insertRow(orderedEntries, primaryIndex, isTransaction);
     } catch (DuplicateKeyException e) {
       throw e;
     } finally {
@@ -529,7 +528,7 @@ public class Table implements Iterable<Row> {
   private void executeDelete(Entry primaryEntry, boolean isTransaction) {
     try {
       lock.writeLock().lock();
-      this.storage.deleteRow(primaryEntry, primaryIndex, isTransaction);
+      storage.deleteRow(primaryEntry, primaryIndex, isTransaction);
     } finally {
       lock.writeLock().unlock();
     }
@@ -579,10 +578,10 @@ public class Table implements Iterable<Row> {
    * @throws KeyNotExistException if primaryEntry, columns, or entries is null.
    */
   public void update(
-      Entry primaryEntry,
-      ArrayList<Column> updateColumns,
-      ArrayList<Entry> updateEntries,
-      boolean isTransaction) {
+          Entry primaryEntry,
+          ArrayList<Column> updateColumns,
+          ArrayList<Entry> updateEntries,
+          boolean isTransaction) {
     if (primaryEntry == null || updateColumns == null || updateEntries == null) {
       throw new KeyNotExistException(null);
     }
@@ -611,7 +610,7 @@ public class Table implements Iterable<Row> {
 
     try {
       lock.writeLock().lock();
-      this.storage.updateRow(primaryEntry, primaryIndex, targetKeys, updateEntries, isTransaction);
+      storage.updateRow(primaryEntry, primaryIndex, targetKeys, updateEntries, isTransaction);
     } catch (KeyNotExistException | DuplicateKeyException e) {
       throw e;
     } finally {
@@ -718,7 +717,7 @@ public class Table implements Iterable<Row> {
   public void persist() {
     try {
       lock.readLock().lock();
-      this.storage.persist();
+      storage.persist();
     } finally {
       lock.readLock().unlock();
     }
@@ -737,7 +736,7 @@ public class Table implements Iterable<Row> {
     Row row;
     try {
       lock.readLock().lock();
-      row = this.storage.getRow(entry, primaryIndex);
+      row = storage.getRow(entry, primaryIndex);
     } finally {
       lock.readLock().unlock();
     }
@@ -758,8 +757,8 @@ public class Table implements Iterable<Row> {
 
   /** Method to drop the table from the cache. */
   private void dropFromStorage() {
-    this.storage.dropSelf();
-    this.storage = null;
+    storage.dropSelf();
+    storage = null;
   }
 
   /** Method to delete the data files of the table. */
@@ -767,8 +766,7 @@ public class Table implements Iterable<Row> {
     File dir = new File(DATA_DIRECTORY);
     File[] fileList = dir.listFiles();
     if (fileList == null) return;
-    for (int i = 1; i < fileList.length; i ++) {
-      File f = fileList[i];
+    for (File f : fileList) {
       if (f.isFile() && isDataFileOfTable(f)) {
         boolean deleted = f.delete();
         if (!deleted) {
@@ -823,7 +821,7 @@ public class Table implements Iterable<Row> {
     String name = this.tableName;
     String top = "Column Name, Column Type, Primary, Is Null, Max Length";
     StringBuilder result =
-        new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
+            new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
     for (Column column : this.columns) {
       if (column != null) {
         result.append(column.toString()).append("\n");
