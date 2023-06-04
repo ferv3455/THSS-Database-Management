@@ -380,5 +380,10 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
             queryPlan.getTable(), cond_plan.getLogic());
   }
 
+  @Override
+  public LogicalPlan visitQuitStmt(SQLParser.QuitStmtContext ctx) {
+    return new QuitPlan();
+  }
+
   // TODO: parser to more logical plan
 }
