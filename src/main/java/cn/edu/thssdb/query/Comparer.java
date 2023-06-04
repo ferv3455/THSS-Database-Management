@@ -29,4 +29,9 @@ public class Comparer {
   public Comparable getValue() {
     return mValue;
   }
+
+  @Override
+  public String toString() {
+    return mValue.toString();
+  }
 }

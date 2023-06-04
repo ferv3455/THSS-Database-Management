@@ -29,5 +29,15 @@ public abstract class LogicalPlan {
     COLUMN_DEF,
     TB_CONSTRAINT,
     TYPE_NAME,
+    VALUE_ENTRY,
+    RESULT_COL,
+    MUL_COND,
+    COND,
+    COMPARATOR,
+    COMPARER,
+    EXPR,
+    LITERAL,
+
+    TB_QUERY,
   }
 }

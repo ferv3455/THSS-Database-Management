@@ -24,7 +24,7 @@ public class SingleTable extends QueryTable implements Iterator<Row> {
   }
 
   @Override
-  public ArrayList<MetaInfo> GenerateMetaInfo() {
+  public ArrayList<MetaInfo> generateMetaInfo() {
     ArrayList<MetaInfo> the_meta = new ArrayList<>();
     the_meta.add(new MetaInfo(mTable.tableName, mTable.columns));
     return the_meta;

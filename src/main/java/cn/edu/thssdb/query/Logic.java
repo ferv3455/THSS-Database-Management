@@ -98,4 +98,12 @@ public class Logic {
     }
     return ResultType.UNKNOWN;
   }
+
+  @Override
+  public String toString() {
+    if (mTerminal) {
+      return mCondition.toString();
+    }
+    return mLeft.toString() + " " + mType.toString() + " " + mRight.toString();
+  }
 }

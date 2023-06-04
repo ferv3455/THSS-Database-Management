@@ -33,7 +33,7 @@ public class JointTable extends QueryTable implements Iterator<Row> {
 
   // 生成元信息列表
   @Override
-  public ArrayList<MetaInfo> GenerateMetaInfo() {
+  public ArrayList<MetaInfo> generateMetaInfo() {
     ArrayList<MetaInfo> metaInfoList = new ArrayList<>();
 
     // 遍历所有的表格

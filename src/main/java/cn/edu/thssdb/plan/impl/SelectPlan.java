@@ -19,44 +19,53 @@
 package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
-import cn.edu.thssdb.sql.SQLParser;
+import cn.edu.thssdb.query.Logic;
+import cn.edu.thssdb.query.QueryTable;
+import cn.edu.thssdb.utils.Pair;
 
 import java.util.List;
 
 public class SelectPlan extends LogicalPlan {
 
-  private List<SQLParser.ResultColumnContext> resultColumn;
-  private List<SQLParser.TableQueryContext> tableQuery;
-  private SQLParser.MultipleConditionContext condition;
+  private final List<Pair<String, String>> resultColumns;
+  private final List<Pair<List<String>, Logic>> tableQuery;
+  private final QueryTable table;
+  private final Logic logic;
 
   public SelectPlan(
-      List<SQLParser.ResultColumnContext> resultColumn,
-      List<SQLParser.TableQueryContext> tableQuery,
-      SQLParser.MultipleConditionContext condition) {
+      List<Pair<String, String>> resultColumns,
+      List<Pair<List<String>, Logic>> tableQuery,
+      QueryTable table,
+      Logic logic) {
     super(LogicalPlanType.SELECT);
-    this.resultColumn = resultColumn;
+    this.resultColumns = resultColumns;
     this.tableQuery = tableQuery;
-    this.condition = condition;
+    this.table = table;
+    this.logic = logic;
   }
 
-  public List<SQLParser.ResultColumnContext> getResultColumn() {
-    return resultColumn;
+  public List<Pair<String, String>> getResultColumns() {
+    return resultColumns;
   }
 
-  public List<SQLParser.TableQueryContext> getTableQuery() {
+  public List<Pair<List<String>, Logic>> getTableQuery() {
     return tableQuery;
   }
 
-  public SQLParser.MultipleConditionContext getCondition() {
-    return condition;
+  public QueryTable getTable() {
+    return table;
+  }
+
+  public Logic getLogic() {
+    return logic;
   }
 
   @Override
   public String toString() {
     return "SelectPlan{"
-        + String.format("resultColumn='%s' ", resultColumn)
+        + String.format("resultColumn='%s' ", resultColumns)
         + String.format("tableQuery='%s' ", tableQuery)
-        + String.format("condition='%s'", condition)
+        + String.format("logic='%s'", logic)
         + "}";
   }
 }

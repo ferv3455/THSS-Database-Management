@@ -784,6 +784,10 @@ public class Table implements Iterable<Row> {
    */
   private boolean isDataFileOfTable(File file) {
     String[] parts = file.getName().split("\\.")[0].split("_");
+    if (parts.length != 3) {
+      return false;
+    }
+
     String databaseName = parts[1];
     String tableName = parts[2];
     return this.databaseName.equals(databaseName) && this.tableName.equals(tableName);
@@ -849,17 +853,11 @@ public class Table implements Iterable<Row> {
 
   private class TableIterator implements Iterator<Row> {
     private Iterator<Pair<Entry, Row>> iterator;
-    private final LinkedList<Entry> q;
     private final Storage mStorage;
 
     TableIterator(Table table) {
       mStorage = table.storage;
       iterator = table.storage.getIndexIter();
-      q = new LinkedList<>();
-      while (iterator.hasNext()) {
-        q.add(iterator.next().getKey());
-      }
-      iterator = null;
     }
 
     @Override
@@ -869,10 +867,8 @@ public class Table implements Iterable<Row> {
 
     @Override
     public Row next() {
-      Entry entry = q.getFirst();
-      Row row = mStorage.getRow(entry, primaryIndex);
-      q.removeFirst();
-      return row;
+      Entry entry = iterator.next().getKey();
+      return mStorage.getRow(entry, primaryIndex);
     }
   }
 

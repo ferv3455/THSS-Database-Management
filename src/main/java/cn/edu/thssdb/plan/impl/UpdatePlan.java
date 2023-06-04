@@ -19,25 +19,22 @@
 package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
-import cn.edu.thssdb.sql.SQLParser;
+import cn.edu.thssdb.query.Comparer;
+import cn.edu.thssdb.query.Logic;
 
 public class UpdatePlan extends LogicalPlan {
 
-  private String tableName;
-  private String columnName;
-  private SQLParser.ExpressionContext expression;
-  private SQLParser.MultipleConditionContext condition;
+  private final String tableName;
+  private final String columnName;
+  private final Comparer value;
+  private final Logic logic;
 
-  public UpdatePlan(
-      String tableName,
-      String columnName,
-      SQLParser.ExpressionContext expression,
-      SQLParser.MultipleConditionContext condition) {
+  public UpdatePlan(String tableName, String columnName, Comparer value, Logic logic) {
     super(LogicalPlanType.UPDATE);
     this.tableName = tableName;
     this.columnName = columnName;
-    this.expression = expression;
-    this.condition = condition;
+    this.value = value;
+    this.logic = logic;
   }
 
   public String getTableName() {
@@ -48,21 +45,21 @@ public class UpdatePlan extends LogicalPlan {
     return columnName;
   }
 
-  public SQLParser.ExpressionContext getExpression() {
-    return expression;
+  public Comparer getValue() {
+    return value;
   }
 
-  public SQLParser.MultipleConditionContext getCondition() {
-    return condition;
+  public Logic getLogic() {
+    return logic;
   }
 
   @Override
   public String toString() {
     return "UpdatePlan{"
-        + String.format("tableName='%s' ", tableName)
-        + String.format("columnName='%s' ", columnName)
-        + String.format("expression='%s' ", expression)
-        + String.format("condition='%s'", condition)
-        + "}";
+            + String.format("tableName='%s' ", tableName)
+            + String.format("columnName='%s' ", columnName)
+            + String.format("value='%s' ", value)
+            + String.format("logic='%s'", logic)
+            + "}";
   }
 }

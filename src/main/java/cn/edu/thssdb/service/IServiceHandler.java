@@ -3,6 +3,7 @@ package cn.edu.thssdb.service;
 import cn.edu.thssdb.plan.LogicalGenerator;
 import cn.edu.thssdb.plan.LogicalPlan;
 import cn.edu.thssdb.plan.impl.*;
+import cn.edu.thssdb.query.*;
 import cn.edu.thssdb.rpc.thrift.ConnectReq;
 import cn.edu.thssdb.rpc.thrift.ConnectResp;
 import cn.edu.thssdb.rpc.thrift.DisconnectReq;
@@ -14,15 +15,17 @@ import cn.edu.thssdb.rpc.thrift.GetTimeResp;
 import cn.edu.thssdb.rpc.thrift.IService;
 import cn.edu.thssdb.rpc.thrift.Status;
 import cn.edu.thssdb.schema.Column;
+import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Manager;
+import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.utils.Global;
+import cn.edu.thssdb.utils.Pair;
 import cn.edu.thssdb.utils.StatusUtil;
 import org.apache.thrift.TException;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class IServiceHandler implements IService.Iface {
 
@@ -54,7 +57,15 @@ public class IServiceHandler implements IService.Iface {
     }
     // TODO: implement execution logic
     Manager manager = Manager.getInstance();
-    LogicalPlan plan = LogicalGenerator.generate(req.statement);
+    long sessionId = req.getSessionId();
+    LogicalPlan plan = null;
+    try {
+      plan = LogicalGenerator.generate(req.statement);
+    } catch (Exception e) {
+      e.printStackTrace();
+      return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+    }
+
     switch (plan.getType()) {
       case CREATE_DB:
         try {
@@ -153,13 +164,90 @@ public class IServiceHandler implements IService.Iface {
         }
 
       case INSERT:
+        try {
+          InsertPlan ins_plan = (InsertPlan) plan;
+          String name = ins_plan.getTableName();
+          // TODO: session
+          String[] columns = ins_plan.getColumns();
+          for (String[] values : ins_plan.getValues())
+          {
+            System.out.printf("%s %s %s\n", name, Arrays.toString(columns), Arrays.toString(values));
+            manager.getCurrent().insert(name, columns, values);
+          }
+          return new ExecuteStatementResp(
+                  StatusUtil.success(String.format("%d row(s) inserted.", ins_plan.getValues().size())), false);
+        } catch (Exception e) {
+          e.printStackTrace();
+          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+        }
+
       case DELETE:
+        try {
+          DeletePlan del_plan = (DeletePlan) plan;
+          String name = del_plan.getTableName();
+          Logic logic = del_plan.getLogic();
+          // TODO: session
+          System.out.printf("%s %s\n", name, logic);
+          String msg = manager.getCurrent().delete(name, logic);
+          return new ExecuteStatementResp(StatusUtil.success(msg), false);
+        } catch (Exception e) {
+          e.printStackTrace();
+          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+        }
+
       case UPDATE:
+        try {
+          UpdatePlan update_plan = (UpdatePlan) plan;
+          String name = update_plan.getTableName();
+          String columnName = update_plan.getColumnName();
+          Comparer value = update_plan.getValue();
+          Logic logic = update_plan.getLogic();
+          // TODO: session
+          System.out.printf("%s %s\n", name, logic);
+          String msg = manager.getCurrent().update(name, columnName, value, logic);
+          return new ExecuteStatementResp(StatusUtil.success(msg), false);
+        } catch (Exception e) {
+          e.printStackTrace();
+          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+        }
+
       case SELECT:
+        try {
+          SelectPlan sel_plan = (SelectPlan) plan;
+          List<Pair<String, String>> resultColumns = sel_plan.getResultColumns();
+          List<Pair<List<String>, Logic>> tableQuery = sel_plan.getTableQuery();
+          QueryTable queryTable = sel_plan.getTable();
+          Logic logic = sel_plan.getLogic();
+
+          // TODO: session
+          System.out.printf("%s %s %s\n", resultColumns, tableQuery, logic);
+          QueryResult result = manager.getCurrent().select(resultColumns, queryTable, logic);
+
+          // Show query result
+          ExecuteStatementResp resp = new ExecuteStatementResp(StatusUtil.success(), true);
+          for (String columnName : result.getColumnNames()) {
+            resp.addToColumnsList(columnName);
+          }
+          while (result.hasNext()) {
+            Row row = result.next();
+            if (row == null) {
+              break;
+            }
+            ArrayList<Entry> entries = row.getEntries();
+            resp.addToRowList(entries.stream().map(Entry::toString).collect(Collectors.toList()));
+          }
+          if (resp.getRowListSize() == 0) {
+            return new ExecuteStatementResp(StatusUtil.success("Empty set."), false);
+          }
+          return resp;
+        } catch (Exception e) {
+          e.printStackTrace();
+          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+        }
+
+      default:
         System.out.println("[DEBUG] " + plan);
         return new ExecuteStatementResp(StatusUtil.success(), false);
-      default:
     }
-    return null;
   }
 }

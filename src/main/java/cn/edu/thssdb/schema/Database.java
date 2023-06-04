@@ -5,11 +5,13 @@ import cn.edu.thssdb.exception.IOFileException;
 import cn.edu.thssdb.exception.TableNotExistException;
 import cn.edu.thssdb.query.*;
 import cn.edu.thssdb.type.ColumnType;
+import cn.edu.thssdb.utils.Pair;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static cn.edu.thssdb.utils.Global.DATA_DIRECTORY;
@@ -92,10 +94,17 @@ public class Database {
     }
   }
 
-  public String select(QueryTable[] queryTables) {
+  public QueryResult select(List<Pair<String, String>> resultColumns,
+                            QueryTable queryTable,
+                            Logic logic) {
     // TODO
-    QueryResult queryResult = new QueryResult(queryTables);
-    return null;
+    try {
+      lock.readLock().lock();
+      queryTable.setLogicSelect(logic);
+      return new QueryResult(queryTable, resultColumns);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public void dropSelf() {
@@ -269,7 +278,7 @@ public class Database {
    * @return The connected query table.
    * @throws TableNotExistException If the specified table does not exist.
    */
-  public QueryTable buildJointQueryTable(ArrayList<String> table_names, Logic logic) {
+  public QueryTable buildJointQueryTable(List<String> table_names, Logic logic) {
     ArrayList<Table> my_tables = new ArrayList<>();
     try {
       lock.readLock().lock();

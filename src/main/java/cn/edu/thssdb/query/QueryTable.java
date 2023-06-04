@@ -16,14 +16,14 @@ public abstract class QueryTable implements Iterator<Row> {
 
   public abstract void prepareNext();
 
-  public abstract ArrayList<MetaInfo> GenerateMetaInfo();
+  public abstract ArrayList<MetaInfo> generateMetaInfo();
 
   QueryTable() {
     this.mQueue = new LinkedList<>();
     this.isFirst = true;
   }
 
-  public void SetLogicSelect(Logic selectLogic) {
+  public void setLogicSelect(Logic selectLogic) {
     this.mLogicSelect = selectLogic;
   }
 

@@ -20,15 +20,16 @@ package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class InsertPlan extends LogicalPlan {
 
-  private String tableName;
-  private List<List<String>> values;
-  private List<String> columns;
+  private final String tableName;
+  private final List<String[]> values;
+  private final String[] columns;
 
-  public InsertPlan(String tableName, List<List<String>> values, List<String> columns) {
+  public InsertPlan(String tableName, List<String[]> values, String[] columns) {
     super(LogicalPlanType.INSERT);
     this.tableName = tableName;
     this.values = values;
@@ -39,11 +40,11 @@ public class InsertPlan extends LogicalPlan {
     return tableName;
   }
 
-  public List<List<String>> getValues() {
+  public List<String[]> getValues() {
     return values;
   }
 
-  public List<String> getColumns() {
+  public String[] getColumns() {
     return columns;
   }
 
@@ -51,8 +52,7 @@ public class InsertPlan extends LogicalPlan {
   public String toString() {
     return "InsertPlan{"
         + String.format("tableName='%s' ", tableName)
-        + String.format("values=%s ", values)
-        + String.format("columns=%s", columns)
+        + String.format("columns=%s", Arrays.toString(columns))
         + "}";
   }
 }

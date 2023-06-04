@@ -147,4 +147,9 @@ public class Condition {
   public ConditionType getType() {
     return mType;
   }
+
+  @Override
+  public String toString() {
+    return mLeft.toString() + " " + mType.toString() + " " + mRight.toString();
+  }
 }
