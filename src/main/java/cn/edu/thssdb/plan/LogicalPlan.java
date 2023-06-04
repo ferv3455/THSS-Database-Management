@@ -27,6 +27,9 @@ public abstract class LogicalPlan {
     SELECT,
     QUIT,
 
+    BEGIN_TRANS,
+    COMMIT,
+
     COLUMN_DEF,
     TB_CONSTRAINT,
     TYPE_NAME,

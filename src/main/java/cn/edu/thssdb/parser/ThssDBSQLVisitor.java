@@ -349,15 +349,15 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
         ((MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition())).getLogic();
 
     // Build query table
-    Database database = Manager.getInstance().getCurrent();
-    QueryTable table;
-    if (ctx.K_JOIN().size() == 0) {
-      table = database.buildSingleQueryTable(tableNames.get(0));
-    } else {
-      table = database.buildJointQueryTable(tableNames, logic);
-    }
+//    Database database = Manager.getInstance().getCurrent(sessionId);
+//    QueryTable table;
+//    if (ctx.K_JOIN().size() == 0) {
+//      table = database.buildSingleQueryTable(tableNames.get(0));
+//    } else {
+//      table = database.buildJointQueryTable(tableNames, logic);
+//    }
 
-    return new TableQueryPlan(tableNames, logic, table);
+    return new TableQueryPlan(tableNames, logic);
   }
 
   @Override
@@ -378,7 +378,7 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     return new SelectPlan(
         columns,
         Collections.singletonList(new Pair<>(queryPlan.getTableNames(), queryPlan.getLogic())),
-        queryPlan.getTable(),
+//        queryPlan.getTable(),
         cond_plan.getLogic());
   }
 

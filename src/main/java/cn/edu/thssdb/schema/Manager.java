@@ -8,6 +8,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -16,9 +17,10 @@ import static cn.edu.thssdb.utils.Global.DATA_DIRECTORY;
 public class Manager {
 
   private HashMap<String, Database> databases;
-  private Database currentDB; // 当前使用的
+  private HashMap<Long, Database> currentDB; // Current database for each session
   public ArrayList<Long> transaction_sessions; // List of sessions in transaction state
-  public ArrayList<Long> session_queue; // Session queue blocked by lock
+  public ArrayList<Long> session_queue_s; // Session queue blocked by s-lock
+  public ArrayList<Long> session_queue_x; // Session queue blocked by x-lock
   public HashMap<Long, ArrayList<String>> s_lock_dict; // 记录每个session取得了哪些表的s锁
   public HashMap<Long, ArrayList<String>> x_lock_dict; // 记录每个session取得了哪些表的x锁
   private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -31,18 +33,21 @@ public class Manager {
     databases = new HashMap<>();
     s_lock_dict = new HashMap<>();
     x_lock_dict = new HashMap<>();
-    currentDB = null;
+    currentDB = new HashMap<>();
     transaction_sessions = new ArrayList<>();
-    session_queue = new ArrayList<>();
+    session_queue_s = new ArrayList<>();
+    session_queue_x = new ArrayList<>();
     recover();
   }
 
-  public void createDatabaseIfNotExists(String name) {
+  public void createDatabaseIfNotExists(String name, long sessionId) {
     try {
       lock.writeLock().lock();
       if (!databases.containsKey(name)) databases.put(name, new Database(name));
-      if (currentDB == null) {
-        currentDB = get(name);
+      if (sessionId >= 0) {
+        if (currentDB.computeIfAbsent(sessionId, k -> null) == null) {
+          currentDB.put(sessionId, get(name));
+        }
       }
     } finally {
       lock.writeLock().unlock();
@@ -56,18 +61,22 @@ public class Manager {
       if (!databases.containsKey(name)) throw new DatabaseNotExistException(name);
       Database db = databases.get(name);
       db.dropSelf();
-      // db = null;
+      for (Map.Entry<Long, Database> entry : currentDB.entrySet()) {
+        if (entry.getValue() == db) {
+          entry.setValue(null);
+        }
+      }
       databases.remove(name);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void switchDatabase(String name) {
+  public void switchDatabase(String name, long sessionId) {
     try {
       lock.readLock().lock();
       if (!databases.containsKey(name)) throw new DatabaseNotExistException(name);
-      currentDB = databases.get(name);
+      currentDB.put(sessionId, databases.get(name));
     } finally {
       lock.readLock().unlock();
     }
@@ -84,11 +93,11 @@ public class Manager {
     }
   }
 
-  public Database getCurrent() {
-    if (currentDB == null) {
+  public Database getCurrent(long sessionId) {
+    if (currentDB == null || currentDB.get(sessionId) == null) {
       throw new OtherException("No database selected");
     }
-    return currentDB;
+    return currentDB.get(sessionId);
   }
 
   public Database get(String name) {
@@ -110,14 +119,16 @@ public class Manager {
     }
   }
 
-  public void quit() {
+  public void quit(long sessionId) {
     try {
       lock.writeLock().lock();
       for (Database db : databases.values()) {
         db.quit();
       }
       persist();
-      currentDB = null;
+      if (currentDB.containsKey(sessionId)) {
+        currentDB.remove(sessionId);
+      }
       //      databases.clear();
     } finally {
       lock.writeLock().unlock();
@@ -147,12 +158,12 @@ public class Manager {
       BufferedReader bufferedReader = new BufferedReader(reader);
       String line = null;
       while ((line = bufferedReader.readLine()) != null) {
-        createDatabaseIfNotExists(line);
+        createDatabaseIfNotExists(line, -1);
         // readlog(line);
       }
       reader.close();
       bufferedReader.close();
-      currentDB = null;
+      currentDB = new HashMap<>();
     } catch (Exception e) {
       throw new IOFileException(DATA_DIRECTORY + "manager.data");
     }
