@@ -357,7 +357,8 @@ public class IServiceHandler implements IService.Iface {
     }
   }
 
-  public void acquireXLock(Manager manager, Table table, long sessionId) throws InterruptedException {
+  public void acquireXLock(Manager manager, Table table, long sessionId)
+      throws InterruptedException {
     // Add to queue
     if (!manager.session_queue_x.contains(sessionId)) {
       manager.session_queue_x.add(sessionId);
@@ -370,11 +371,13 @@ public class IServiceHandler implements IService.Iface {
         int lockX = table.getXLock(sessionId);
         int lockS = table.getSLock(sessionId); // get two locks at a time
         if (lockX >= 0 && lockS >= 0) {
-          manager.x_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>()).add(table.tableName);
+          manager
+              .x_lock_dict
+              .computeIfAbsent(sessionId, k -> new ArrayList<>())
+              .add(table.tableName);
           manager.session_queue_x.remove(0);
           break;
-        }
-        else {
+        } else {
           if (lockX >= 0) {
             table.freeXLock(sessionId);
           }
@@ -387,7 +390,8 @@ public class IServiceHandler implements IService.Iface {
     }
   }
 
-  public void acquireSLock(Manager manager, Table table, long sessionId) throws InterruptedException {
+  public void acquireSLock(Manager manager, Table table, long sessionId)
+      throws InterruptedException {
     // Add to queue
     if (!manager.session_queue_s.contains(sessionId)) {
       manager.session_queue_s.add(sessionId);
@@ -399,7 +403,10 @@ public class IServiceHandler implements IService.Iface {
         // first in the queue: acquire the lock
         int lock = table.getSLock(sessionId);
         if (lock >= 0) {
-          manager.s_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>()).add(table.tableName);
+          manager
+              .s_lock_dict
+              .computeIfAbsent(sessionId, k -> new ArrayList<>())
+              .add(table.tableName);
           manager.session_queue_s.remove(0);
           break;
         }

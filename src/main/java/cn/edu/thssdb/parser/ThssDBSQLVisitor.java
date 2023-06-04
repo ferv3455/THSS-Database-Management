@@ -25,10 +25,7 @@ import cn.edu.thssdb.plan.impl.*;
 import cn.edu.thssdb.query.Comparer;
 import cn.edu.thssdb.query.Condition;
 import cn.edu.thssdb.query.Logic;
-import cn.edu.thssdb.query.QueryTable;
 import cn.edu.thssdb.schema.Column;
-import cn.edu.thssdb.schema.Database;
-import cn.edu.thssdb.schema.Manager;
 import cn.edu.thssdb.sql.SQLBaseVisitor;
 import cn.edu.thssdb.sql.SQLParser;
 import cn.edu.thssdb.type.ColumnType;
@@ -347,16 +344,6 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
         ctx.tableName().stream().map(RuleContext::getText).collect(Collectors.toList());
     Logic logic =
         ((MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition())).getLogic();
-
-    // Build query table
-//    Database database = Manager.getInstance().getCurrent(sessionId);
-//    QueryTable table;
-//    if (ctx.K_JOIN().size() == 0) {
-//      table = database.buildSingleQueryTable(tableNames.get(0));
-//    } else {
-//      table = database.buildJointQueryTable(tableNames, logic);
-//    }
-
     return new TableQueryPlan(tableNames, logic);
   }
 
@@ -378,7 +365,6 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     return new SelectPlan(
         columns,
         Collections.singletonList(new Pair<>(queryPlan.getTableNames(), queryPlan.getLogic())),
-//        queryPlan.getTable(),
         cond_plan.getLogic());
   }
 

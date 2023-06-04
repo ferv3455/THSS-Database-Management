@@ -20,7 +20,6 @@ package cn.edu.thssdb.plan.impl;
 
 import cn.edu.thssdb.plan.LogicalPlan;
 import cn.edu.thssdb.query.Logic;
-//import cn.edu.thssdb.query.QueryTable;
 import cn.edu.thssdb.utils.Pair;
 
 import java.util.List;
@@ -29,18 +28,15 @@ public class SelectPlan extends LogicalPlan {
 
   private final List<Pair<String, String>> resultColumns;
   private final List<Pair<List<String>, Logic>> tableQuery;
-//  private final QueryTable table;
   private final Logic logic;
 
   public SelectPlan(
       List<Pair<String, String>> resultColumns,
       List<Pair<List<String>, Logic>> tableQuery,
-//      QueryTable table,
       Logic logic) {
     super(LogicalPlanType.SELECT);
     this.resultColumns = resultColumns;
     this.tableQuery = tableQuery;
-//    this.table = table;
     this.logic = logic;
   }
 
@@ -51,10 +47,6 @@ public class SelectPlan extends LogicalPlan {
   public List<Pair<List<String>, Logic>> getTableQuery() {
     return tableQuery;
   }
-
-//  public QueryTable getTable() {
-//    return table;
-//  }
 
   public Logic getLogic() {
     return logic;
