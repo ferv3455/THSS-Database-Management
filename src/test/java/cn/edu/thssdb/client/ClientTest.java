@@ -35,10 +35,10 @@ public class ClientTest {
       // TESTS BEGIN
       {
         String[] statement = {
-                "create database test;\n",
-                "use test;\n",
-                "create table tb (id INT PRIMARY KEY, name STRING(8) NOT NULL);\n",
-                "create table tb2 (id INT PRIMARY KEY, status STRING(8) NOT NULL);\n",
+          "create database test;\n",
+          "use test;\n",
+          "create table tb (id INT PRIMARY KEY, name STRING(8) NOT NULL);\n",
+          "create table tb2 (id INT PRIMARY KEY, status STRING(8) NOT NULL);\n",
         };
         for (String st : statement) {
           ExecuteStatementReq req = new ExecuteStatementReq(sessionID, st);
@@ -50,10 +50,10 @@ public class ClientTest {
       {
         long startTime = System.currentTimeMillis();
         String[] statement = {
-                "insert into tb values (0, 'hi');\n",
-                "insert into tb values (1, 'hello');\n",
-                "insert into tb values (2, 'hello');\n",
-                "insert into tb2 values (0, 'good'), (2, 'good'), (4, 'bad');\n",
+          "insert into tb values (0, 'hi');\n",
+          "insert into tb values (1, 'hello');\n",
+          "insert into tb values (2, 'hello');\n",
+          "insert into tb2 values (0, 'good'), (2, 'good'), (4, 'bad');\n",
         };
         for (String st : statement) {
           ExecuteStatementReq req = new ExecuteStatementReq(sessionID, st);
@@ -66,7 +66,7 @@ public class ClientTest {
       {
         long startTime = System.currentTimeMillis();
         String[] statement = {
-                "select tb.id, tb2.status from tb join tb2 on tb.id = tb2.id where tb.id > 1;\n",
+          "select tb.id, tb2.status from tb join tb2 on tb.id = tb2.id where tb.id > 1;\n",
         };
         for (String st : statement) {
           ExecuteStatementReq req = new ExecuteStatementReq(sessionID, st);
@@ -78,10 +78,10 @@ public class ClientTest {
 
       {
         String[] statement = {
-                "delete from tb;\n",
-                "delete from tb2 where id > 2;\n",
-                "drop table tb;\n",
-                "drop database test;\n",
+          "delete from tb;\n",
+          "delete from tb2 where id > 2;\n",
+          "drop table tb;\n",
+          "drop database test;\n",
         };
         for (String st : statement) {
           ExecuteStatementReq req = new ExecuteStatementReq(sessionID, st);
@@ -165,8 +165,8 @@ public class ClientTest {
         StringBuilder separator = new StringBuilder();
         for (int i = 0; i < column_size; ++i) {
           separator
-                  .append("+")
-                  .append(new String(new char[column_width[i] + 2]).replace("\0", "-"));
+              .append("+")
+              .append(new String(new char[column_width[i] + 2]).replace("\0", "-"));
           if (i == column_size - 1) separator.append("+");
         }
         println(separator.toString());
@@ -174,8 +174,7 @@ public class ClientTest {
         StringBuilder column_str = new StringBuilder();
         for (int i = 0; i < column_size; ++i) {
           column_str.append(
-                  String.format(
-                          String.format("| %%-%ds ", column_width[i]), resp.columnsList.get(i)));
+              String.format(String.format("| %%-%ds ", column_width[i]), resp.columnsList.get(i)));
           if (i == column_size - 1) column_str.append("|");
         }
         println(column_str.toString());
@@ -185,8 +184,7 @@ public class ClientTest {
         for (List<String> row : resp.rowList) {
           StringBuilder row_str = new StringBuilder();
           for (int i = 0; i < column_size; ++i) {
-            row_str.append(
-                    String.format(String.format("| %%-%ds ", column_width[i]), row.get(i)));
+            row_str.append(String.format(String.format("| %%-%ds ", column_width[i]), row.get(i)));
             if (i == column_size - 1) row_str.append("|");
           }
           println(row_str.toString());

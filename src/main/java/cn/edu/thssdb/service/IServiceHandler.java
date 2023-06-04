@@ -173,12 +173,12 @@ public class IServiceHandler implements IService.Iface {
           String name = ins_plan.getTableName();
           // TODO: session
           String[] columns = ins_plan.getColumns();
-          for (String[] values : ins_plan.getValues())
-          {
+          for (String[] values : ins_plan.getValues()) {
             manager.getCurrent().insert(name, columns, values);
           }
           return new ExecuteStatementResp(
-                  StatusUtil.success(String.format("%d row(s) inserted.", ins_plan.getValues().size())), false);
+              StatusUtil.success(String.format("%d row(s) inserted.", ins_plan.getValues().size())),
+              false);
         } catch (Exception e) {
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);

@@ -181,8 +181,7 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
   public LogicalPlan visitValueEntry(SQLParser.ValueEntryContext ctx) {
     String[] values = new String[ctx.literalValue().size()];
     int i = 0;
-    for (SQLParser.LiteralValueContext lv_ctx : ctx.literalValue())
-    {
+    for (SQLParser.LiteralValueContext lv_ctx : ctx.literalValue()) {
       values[i++] = lv_ctx.getText();
     }
     return new ValueEntryPlan(values);
@@ -191,14 +190,12 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
   @Override
   public LogicalPlan visitInsertStmt(SQLParser.InsertStmtContext ctx) {
     String[] columns = ctx.columnName().stream().map(RuleContext::getText).toArray(String[]::new);
-    if (columns.length == 0)
-    {
+    if (columns.length == 0) {
       columns = null;
     }
 
     List<String[]> values = new ArrayList<>();
-    for (SQLParser.ValueEntryContext entry_ctx : ctx.valueEntry())
-    {
+    for (SQLParser.ValueEntryContext entry_ctx : ctx.valueEntry()) {
       ValueEntryPlan entry_plan = (ValueEntryPlan) visitValueEntry(entry_ctx);
       values.add(entry_plan.getValues());
     }
@@ -210,14 +207,11 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     ComparerType type;
     if (ctx.NUMERIC_LITERAL() != null) {
       type = ComparerType.NUMBER;
-    }
-    else if (ctx.STRING_LITERAL() != null) {
+    } else if (ctx.STRING_LITERAL() != null) {
       type = ComparerType.STRING;
-    }
-    else if (ctx.K_NULL() != null) {
+    } else if (ctx.K_NULL() != null) {
       type = ComparerType.NULL;
-    }
-    else {
+    } else {
       type = null;
     }
     return new LiteralValuePlan(ctx.getText(), type);
@@ -228,8 +222,7 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     Comparer comparer;
     if (ctx.columnFullName() != null) {
       comparer = new Comparer(ComparerType.COLUMN, ctx.columnFullName().getText());
-    }
-    else {
+    } else {
       LiteralValuePlan valuePlan = (LiteralValuePlan) visitLiteralValue(ctx.literalValue());
       String text = valuePlan.getValue();
       ComparerType type = valuePlan.getValueType();
@@ -292,25 +285,23 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     Logic logic;
     if (ctx == null) {
       logic = null;
-    }
-    else if (ctx.condition() != null) {
+    } else if (ctx.condition() != null) {
       ConditionPlan cond_plan = (ConditionPlan) visitCondition(ctx.condition());
       logic = new Logic(cond_plan.getCondition());
-    }
-    else {
+    } else {
       LogicType logic_type;
       if (ctx.AND() != null) {
         logic_type = LogicType.AND;
-      }
-      else if (ctx.OR() != null) {
+      } else if (ctx.OR() != null) {
         logic_type = LogicType.OR;
-      }
-      else {
+      } else {
         throw new OtherException();
       }
 
-      MultipleConditionPlan leftOpPlan = (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition(0));
-      MultipleConditionPlan rightOpPlan = (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition(1));
+      MultipleConditionPlan leftOpPlan =
+          (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition(0));
+      MultipleConditionPlan rightOpPlan =
+          (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition(1));
       logic = new Logic(leftOpPlan.getLogic(), rightOpPlan.getLogic(), logic_type);
     }
     return new MultipleConditionPlan(logic);
@@ -318,46 +309,51 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitDeleteStmt(SQLParser.DeleteStmtContext ctx) {
-    MultipleConditionPlan cond_plan = (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
+    MultipleConditionPlan cond_plan =
+        (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
     return new DeletePlan(ctx.tableName().getText(), cond_plan.getLogic());
   }
 
   @Override
   public LogicalPlan visitUpdateStmt(SQLParser.UpdateStmtContext ctx) {
     ComparerPlan valuePlan = ((ComparerPlan) visitExpression(ctx.expression()));
-    MultipleConditionPlan cond_plan = (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
-    return new UpdatePlan(ctx.tableName().getText(), ctx.columnName().getText(), valuePlan.getComparer(), cond_plan.getLogic());
+    MultipleConditionPlan cond_plan =
+        (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
+    return new UpdatePlan(
+        ctx.tableName().getText(),
+        ctx.columnName().getText(),
+        valuePlan.getComparer(),
+        cond_plan.getLogic());
   }
 
   @Override
   public LogicalPlan visitResultColumn(SQLParser.ResultColumnContext ctx) {
     if (ctx.tableName() != null) {
       return new ResultColumnPlan(ctx.tableName().getText(), null);
-    }
-    else if (ctx.columnFullName() != null) {
+    } else if (ctx.columnFullName() != null) {
       if (ctx.columnFullName().tableName() != null) {
         return new ResultColumnPlan(
-                ctx.columnFullName().tableName().getText(),
-                ctx.columnFullName().columnName().getText());
+            ctx.columnFullName().tableName().getText(),
+            ctx.columnFullName().columnName().getText());
       }
       return new ResultColumnPlan(null, ctx.columnFullName().columnName().getText());
-    }
-    else {
+    } else {
       return new ResultColumnPlan(null, null);
     }
   }
 
   public LogicalPlan visitTableQuery(SQLParser.TableQueryContext ctx) {
-    List<String> tableNames = ctx.tableName().stream().map(RuleContext::getText).collect(Collectors.toList());
-    Logic logic = ((MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition())).getLogic();
+    List<String> tableNames =
+        ctx.tableName().stream().map(RuleContext::getText).collect(Collectors.toList());
+    Logic logic =
+        ((MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition())).getLogic();
 
     // Build query table
     Database database = Manager.getInstance().getCurrent();
     QueryTable table;
     if (ctx.K_JOIN().size() == 0) {
       table = database.buildSingleQueryTable(tableNames.get(0));
-    }
-    else {
+    } else {
       table = database.buildJointQueryTable(tableNames, logic);
     }
 
@@ -366,18 +362,24 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
 
   @Override
   public LogicalPlan visitSelectStmt(SQLParser.SelectStmtContext ctx) {
-    List<Pair<String, String>> columns = ctx.resultColumn().stream().map(
-            column -> {
-              ResultColumnPlan col_plan = (ResultColumnPlan) visitResultColumn(column);
-              return new Pair<>(col_plan.getTableName(), col_plan.getColumnFullName());
-            }).collect(Collectors.toList());
-    MultipleConditionPlan cond_plan = (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
+    List<Pair<String, String>> columns =
+        ctx.resultColumn().stream()
+            .map(
+                column -> {
+                  ResultColumnPlan col_plan = (ResultColumnPlan) visitResultColumn(column);
+                  return new Pair<>(col_plan.getTableName(), col_plan.getColumnFullName());
+                })
+            .collect(Collectors.toList());
+    MultipleConditionPlan cond_plan =
+        (MultipleConditionPlan) visitMultipleCondition(ctx.multipleCondition());
 
     assert ctx.tableQuery().size() == 1;
     TableQueryPlan queryPlan = (TableQueryPlan) visitTableQuery(ctx.tableQuery(0));
-    return new SelectPlan(columns,
-            Collections.singletonList(new Pair<>(queryPlan.getTableNames(), queryPlan.getLogic())),
-            queryPlan.getTable(), cond_plan.getLogic());
+    return new SelectPlan(
+        columns,
+        Collections.singletonList(new Pair<>(queryPlan.getTableNames(), queryPlan.getLogic())),
+        queryPlan.getTable(),
+        cond_plan.getLogic());
   }
 
   @Override

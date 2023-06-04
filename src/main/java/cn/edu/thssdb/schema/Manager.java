@@ -118,7 +118,7 @@ public class Manager {
       }
       persist();
       currentDB = null;
-//      databases.clear();
+      //      databases.clear();
     } finally {
       lock.writeLock().unlock();
     }

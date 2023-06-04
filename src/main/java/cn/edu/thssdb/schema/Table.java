@@ -201,7 +201,7 @@ public class Table implements Iterable<Row> {
    * @throws SchemaNotMatchException if the input schema does not match
    */
   private ArrayList<Entry> reorderEntriesAccordingToSchema(
-          ArrayList<Column> columns, ArrayList<Entry> entries) {
+      ArrayList<Column> columns, ArrayList<Entry> entries) {
     ArrayList<Entry> orderedEntries = new ArrayList<>();
     for (Column column : this.columns) {
       int matchedIndex = columns.indexOf(column);
@@ -230,7 +230,7 @@ public class Table implements Iterable<Row> {
    * @throws DuplicateKeyException if the row to be inserted conflicts with an existing one
    */
   public void insert(
-          ArrayList<Column> columns, ArrayList<Entry> entries, boolean isTransaction) { //
+      ArrayList<Column> columns, ArrayList<Entry> entries, boolean isTransaction) { //
     validateInput(columns, entries);
 
     ArrayList<Entry> orderedEntries = reorderEntriesAccordingToSchema(columns, entries);
@@ -353,9 +353,9 @@ public class Table implements Iterable<Row> {
       throw new NullValueException(column.getName());
     }
     if (column.getType() == ColumnType.STRING
-            && newValue != null
-            && column.getMaxLength() >= 0
-            && newValue.toString().length() > column.getMaxLength()) {
+        && newValue != null
+        && column.getMaxLength() >= 0
+        && newValue.toString().length() > column.getMaxLength()) {
       throw new ValueLengthExceedException(column.getName());
     }
   }
@@ -419,8 +419,8 @@ public class Table implements Iterable<Row> {
 
     int schemaLen = this.columns.size();
     if (columns.length > schemaLen
-            || values.length > schemaLen
-            || columns.length != values.length) {
+        || values.length > schemaLen
+        || columns.length != values.length) {
       throw new LengthNotMatchException(schemaLen, Math.max(columns.length, values.length));
     }
 
@@ -440,9 +440,9 @@ public class Table implements Iterable<Row> {
       }
 
       Comparable entryValue =
-              (matches == 0 || index < 0 || index >= columns.length)
-                      ? null
-                      : ParseValue(column, values[index]);
+          (matches == 0 || index < 0 || index >= columns.length)
+              ? null
+              : ParseValue(column, values[index]);
 
       validateValue(column, entryValue);
       orderedEntries.add(new Entry(entryValue));
@@ -471,7 +471,7 @@ public class Table implements Iterable<Row> {
     ArrayList<Entry> orderedEntries = new ArrayList<>();
     for (int i = 0; i < this.columns.size(); i++) {
       Comparable the_entry_value =
-              i < values.length ? ParseValue(this.columns.get(i), values[i]) : null;
+          i < values.length ? ParseValue(this.columns.get(i), values[i]) : null;
       validateValue(this.columns.get(i), the_entry_value);
       orderedEntries.add(new Entry(the_entry_value));
     }
@@ -578,10 +578,10 @@ public class Table implements Iterable<Row> {
    * @throws KeyNotExistException if primaryEntry, columns, or entries is null.
    */
   public void update(
-          Entry primaryEntry,
-          ArrayList<Column> updateColumns,
-          ArrayList<Entry> updateEntries,
-          boolean isTransaction) {
+      Entry primaryEntry,
+      ArrayList<Column> updateColumns,
+      ArrayList<Entry> updateEntries,
+      boolean isTransaction) {
     if (primaryEntry == null || updateColumns == null || updateEntries == null) {
       throw new KeyNotExistException(null);
     }
@@ -821,7 +821,7 @@ public class Table implements Iterable<Row> {
     String name = this.tableName;
     String top = "Column Name, Column Type, Primary, Is Null, Max Length";
     StringBuilder result =
-            new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
+        new StringBuilder("Table Name: ").append(name).append("\n").append(top).append("\n");
     for (Column column : this.columns) {
       if (column != null) {
         result.append(column.toString()).append("\n");

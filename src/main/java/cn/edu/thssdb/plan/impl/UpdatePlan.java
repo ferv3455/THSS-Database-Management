@@ -56,10 +56,10 @@ public class UpdatePlan extends LogicalPlan {
   @Override
   public String toString() {
     return "UpdatePlan{"
-            + String.format("tableName='%s' ", tableName)
-            + String.format("columnName='%s' ", columnName)
-            + String.format("value='%s' ", value)
-            + String.format("logic='%s'", logic)
-            + "}";
+        + String.format("tableName='%s' ", tableName)
+        + String.format("columnName='%s' ", columnName)
+        + String.format("value='%s' ", value)
+        + String.format("logic='%s'", logic)
+        + "}";
   }
 }

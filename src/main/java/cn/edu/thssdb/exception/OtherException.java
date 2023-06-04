@@ -18,8 +18,7 @@ public class OtherException extends RuntimeException {
   public String getMessage() {
     if (msg == null) {
       return "Exception: Unknown error!";
-    }
-    else {
+    } else {
       return String.format("Exception: %s!", msg);
     }
   }

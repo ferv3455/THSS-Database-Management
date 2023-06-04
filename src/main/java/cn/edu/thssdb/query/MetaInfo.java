@@ -26,7 +26,7 @@ class MetaInfo {
   int columnFind(String name) {
     int size = columns.size();
     for (int i = 0; i < size; i++) {
-      if (columns.get(i).getName().equals(name)){
+      if (columns.get(i).getName().equals(name)) {
         return i;
       }
     }

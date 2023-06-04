@@ -3,12 +3,10 @@ package cn.edu.thssdb.query;
 import cn.edu.thssdb.exception.*;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
-import cn.edu.thssdb.utils.Cell;
 import cn.edu.thssdb.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 public class QueryResult implements Iterator<Row> {
@@ -33,15 +31,13 @@ public class QueryResult implements Iterator<Row> {
           this.indices.add(offset + i);
           if (tableCount == 1) {
             this.attrs.add(metaInfo.getName(i));
-          }
-          else {
+          } else {
             this.attrs.add(metaInfo.getFullName(i));
           }
         }
         offset += columnSize;
       }
-    }
-    else {
+    } else {
       for (Pair<String, String> column : columns) {
         String tableName = column.left;
         String columnName = column.right;
@@ -57,15 +53,13 @@ public class QueryResult implements Iterator<Row> {
               this.indices.add(offset + i);
               if (tableCount == 1) {
                 this.attrs.add(metaInfo.getName(i));
-              }
-              else {
+              } else {
                 this.attrs.add(metaInfo.getFullName(i));
               }
             }
             offset += columnSize;
           }
-        }
-        else if (tableName != null && columnName == null) {
+        } else if (tableName != null && columnName == null) {
           // all columns in the given table
           int count = 0;
           int offset = 0;
@@ -76,8 +70,7 @@ public class QueryResult implements Iterator<Row> {
                 this.indices.add(offset + i);
                 if (tableCount == 1) {
                   this.attrs.add(metaInfo.getName(i));
-                }
-                else {
+                } else {
                   this.attrs.add(metaInfo.getFullName(i));
                 }
               }
@@ -89,8 +82,7 @@ public class QueryResult implements Iterator<Row> {
           if (count == 0) {
             throw new AttributeNotFoundException(String.format("%s.%s", tableName, columnName));
           }
-        }
-        else if (tableName == null) {
+        } else if (tableName == null) {
           // find the given column in the first table (only one occurrence)
           int count = 0;
           int offset = 0;
@@ -105,12 +97,10 @@ public class QueryResult implements Iterator<Row> {
           }
           if (count == 0) {
             throw new AttributeNotFoundException(columnName);
-          }
-          else if (count > 1) {
+          } else if (count > 1) {
             throw new AttributeCollisionException(columnName);
           }
-        }
-        else {
+        } else {
           // find the given column
           int count = 0;
           int offset = 0;
@@ -148,10 +138,10 @@ public class QueryResult implements Iterator<Row> {
     return generateQueryRecord(queryTable.next());
   }
 
-//  public static Row combineRow(LinkedList<Row> rows) {
-//    // TODO
-//    return null;
-//  }
+  //  public static Row combineRow(LinkedList<Row> rows) {
+  //    // TODO
+  //    return null;
+  //  }
 
   public Row generateQueryRecord(Row row) {
     if (row == null) {

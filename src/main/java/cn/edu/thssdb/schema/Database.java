@@ -94,9 +94,8 @@ public class Database {
     }
   }
 
-  public QueryResult select(List<Pair<String, String>> resultColumns,
-                            QueryTable queryTable,
-                            Logic logic) {
+  public QueryResult select(
+      List<Pair<String, String>> resultColumns, QueryTable queryTable, Logic logic) {
     // TODO
     try {
       lock.readLock().lock();
