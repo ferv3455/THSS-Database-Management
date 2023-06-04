@@ -2,6 +2,7 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.exception.DatabaseNotExistException;
 import cn.edu.thssdb.exception.IOFileException;
+import cn.edu.thssdb.exception.OtherException;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -84,6 +85,9 @@ public class Manager {
   }
 
   public Database getCurrent() {
+    if (currentDB == null) {
+      throw new OtherException("No database selected");
+    }
     return currentDB;
   }
 
@@ -113,7 +117,8 @@ public class Manager {
         db.quit();
       }
       persist();
-      databases.clear();
+      currentDB = null;
+//      databases.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -147,6 +152,7 @@ public class Manager {
       }
       reader.close();
       bufferedReader.close();
+      currentDB = null;
     } catch (Exception e) {
       throw new IOFileException(DATA_DIRECTORY + "manager.data");
     }

@@ -25,6 +25,7 @@ public abstract class LogicalPlan {
     DELETE,
     UPDATE,
     SELECT,
+    QUIT,
 
     COLUMN_DEF,
     TB_CONSTRAINT,

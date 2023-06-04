@@ -46,7 +46,12 @@ public class IServiceHandler implements IService.Iface {
 
   @Override
   public DisconnectResp disconnect(DisconnectReq req) throws TException {
-    return new DisconnectResp(StatusUtil.success());
+    try {
+      Manager.getInstance().quit();
+      return new DisconnectResp(StatusUtil.success());
+    } catch (Exception e) {
+      return new DisconnectResp(StatusUtil.fail(e.toString()));
+    }
   }
 
   @Override
@@ -71,7 +76,6 @@ public class IServiceHandler implements IService.Iface {
         try {
           String name = ((CreateDatabasePlan) plan).getDatabaseName();
           manager.createDatabaseIfNotExists(name);
-          manager.persistdb(name);
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Created database %s.", name)), false);
         } catch (Exception e) {
@@ -171,7 +175,6 @@ public class IServiceHandler implements IService.Iface {
           String[] columns = ins_plan.getColumns();
           for (String[] values : ins_plan.getValues())
           {
-            System.out.printf("%s %s %s\n", name, Arrays.toString(columns), Arrays.toString(values));
             manager.getCurrent().insert(name, columns, values);
           }
           return new ExecuteStatementResp(
@@ -187,7 +190,6 @@ public class IServiceHandler implements IService.Iface {
           String name = del_plan.getTableName();
           Logic logic = del_plan.getLogic();
           // TODO: session
-          System.out.printf("%s %s\n", name, logic);
           String msg = manager.getCurrent().delete(name, logic);
           return new ExecuteStatementResp(StatusUtil.success(msg), false);
         } catch (Exception e) {
@@ -203,7 +205,6 @@ public class IServiceHandler implements IService.Iface {
           Comparer value = update_plan.getValue();
           Logic logic = update_plan.getLogic();
           // TODO: session
-          System.out.printf("%s %s\n", name, logic);
           String msg = manager.getCurrent().update(name, columnName, value, logic);
           return new ExecuteStatementResp(StatusUtil.success(msg), false);
         } catch (Exception e) {
@@ -220,7 +221,6 @@ public class IServiceHandler implements IService.Iface {
           Logic logic = sel_plan.getLogic();
 
           // TODO: session
-          System.out.printf("%s %s %s\n", resultColumns, tableQuery, logic);
           QueryResult result = manager.getCurrent().select(resultColumns, queryTable, logic);
 
           // Show query result
@@ -242,6 +242,14 @@ public class IServiceHandler implements IService.Iface {
           return resp;
         } catch (Exception e) {
           e.printStackTrace();
+          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
+        }
+
+      case QUIT:
+        try {
+          manager.quit();
+          return new ExecuteStatementResp(StatusUtil.success(), false);
+        } catch (Exception e) {
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
 
