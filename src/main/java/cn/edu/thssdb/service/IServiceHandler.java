@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class IServiceHandler implements IService.Iface {
 
   private static final AtomicInteger sessionCnt = new AtomicInteger(0);
+  private static final int lockInterval = 100;
 
   @Override
   public GetTimeResp getTime(GetTimeReq req) throws TException {
@@ -185,7 +186,7 @@ public class IServiceHandler implements IService.Iface {
           }
 
           // Free x lock if autocommit
-          if (manager.transaction_sessions.contains(sessionId)) {
+          if (!manager.transaction_sessions.contains(sessionId)) {
             table.freeXLock(sessionId);
           }
 
@@ -213,7 +214,7 @@ public class IServiceHandler implements IService.Iface {
           String msg = database.delete(tableName, logic);
 
           // Free x lock if autocommit
-          if (manager.transaction_sessions.contains(sessionId)) {
+          if (!manager.transaction_sessions.contains(sessionId)) {
             table.freeXLock(sessionId);
           }
 
@@ -241,7 +242,7 @@ public class IServiceHandler implements IService.Iface {
           String msg = database.update(tableName, columnName, value, logic);
 
           // Free x lock if autocommit
-          if (manager.transaction_sessions.contains(sessionId)) {
+          if (!manager.transaction_sessions.contains(sessionId)) {
             table.freeXLock(sessionId);
           }
 
@@ -278,7 +279,7 @@ public class IServiceHandler implements IService.Iface {
           QueryResult result = database.select(resultColumns, queryTable, logic);
 
           // Free s lock if autocommit
-          if (manager.transaction_sessions.contains(sessionId)) {
+          if (!manager.transaction_sessions.contains(sessionId)) {
             for (String tableName : tableNames) {
               database.get(tableName).freeSLock(sessionId);
             }
@@ -343,8 +344,8 @@ public class IServiceHandler implements IService.Iface {
               table.freeSLock(sessionId);
               table.unpin();
             }
-            manager.s_lock_dict.get(sessionId).clear();
-            manager.x_lock_dict.get(sessionId).clear();
+            manager.s_lock_dict.remove(sessionId);
+            manager.x_lock_dict.remove(sessionId);
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction commited."), false);
         } catch (Exception e) {
@@ -368,25 +369,24 @@ public class IServiceHandler implements IService.Iface {
     while (true) {
       if (manager.session_queue_x.get(0) == sessionId) {
         // first in the queue: acquire the lock
-        int lockX = table.getXLock(sessionId);
-        int lockS = table.getSLock(sessionId); // get two locks at a time
-        if (lockX >= 0 && lockS >= 0) {
-          manager
-              .x_lock_dict
-              .computeIfAbsent(sessionId, k -> new ArrayList<>())
-              .add(table.tableName);
+        int lock = table.getXLock(sessionId);
+        if (lock >= 0) {
+          if (lock > 0) {
+            // new lock acquired
+            manager
+                .x_lock_dict
+                .computeIfAbsent(sessionId, k -> new ArrayList<>())
+                .add(table.tableName);
+            manager
+                .s_lock_dict
+                .computeIfAbsent(sessionId, k -> new ArrayList<>())
+                .remove(table.tableName);
+          }
           manager.session_queue_x.remove(0);
           break;
-        } else {
-          if (lockX >= 0) {
-            table.freeXLock(sessionId);
-          }
-          if (lockS >= 0) {
-            table.freeSLock(sessionId);
-          }
         }
       }
-      Thread.sleep(400);
+      Thread.sleep(lockInterval);
     }
   }
 
@@ -403,15 +403,18 @@ public class IServiceHandler implements IService.Iface {
         // first in the queue: acquire the lock
         int lock = table.getSLock(sessionId);
         if (lock >= 0) {
-          manager
-              .s_lock_dict
-              .computeIfAbsent(sessionId, k -> new ArrayList<>())
-              .add(table.tableName);
+          if (lock > 0) {
+            // new lock acquired
+            manager
+                .s_lock_dict
+                .computeIfAbsent(sessionId, k -> new ArrayList<>())
+                .add(table.tableName);
+          }
           manager.session_queue_s.remove(0);
           break;
         }
       }
-      Thread.sleep(400);
+      Thread.sleep(lockInterval);
     }
   }
 }

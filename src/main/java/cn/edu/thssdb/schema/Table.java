@@ -94,7 +94,14 @@ public class Table implements Iterable<Row> {
         // 如果当前session已经拥有独占锁，不需要再加锁
         break;
       case 1: // 如果当前为共享锁
-        result = -1; // 无法获取独占锁，返回-1
+        if (sLockList.size() == 1 && sLockList.contains(session)) { // 当前session共享锁
+          xLockList.add(session); // 为session加上独占锁
+          sLockList.remove(session);
+          tp_lock = 2;
+          result = 1; // 升级为独占锁
+          break;
+        }
+        result = -1; // 无法获取其他session的共享锁，返回-1
         break;
       case 0: // 如果当前没有锁
         xLockList.add(session); // 为session加上独占锁
@@ -429,7 +436,7 @@ public class Table implements Iterable<Row> {
       int index = -1;
       int matches = 0;
       for (int i = 0; i < columns.length; i++) {
-        if (columns[i].equals(column.getName().toLowerCase())) {
+        if (columns[i].equals(column.getName())) {
           index = i;
           matches++;
         }
