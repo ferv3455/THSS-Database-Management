@@ -1,5 +1,6 @@
 package cn.edu.thssdb.service;
 
+import cn.edu.thssdb.exception.OtherException;
 import cn.edu.thssdb.plan.LogicalGenerator;
 import cn.edu.thssdb.plan.LogicalPlan;
 import cn.edu.thssdb.plan.impl.*;
@@ -27,7 +28,6 @@ import java.util.stream.Collectors;
 public class IServiceHandler implements IService.Iface {
 
   private static final AtomicInteger sessionCnt = new AtomicInteger(0);
-  private static final int lockInterval = 100;
   private static final XLockNotifier xLockNotifier = new XLockNotifier();
 
   @Override
@@ -47,7 +47,30 @@ public class IServiceHandler implements IService.Iface {
   public DisconnectResp disconnect(DisconnectReq req) throws TException {
     try {
       long sessionId = req.getSessionId();
-      Manager.getInstance().quit(sessionId);
+      Manager manager = Manager.getInstance();
+      try {
+        Database database = manager.getCurrent(sessionId);
+        if (manager.transaction_sessions.contains(sessionId)) {
+          manager.transaction_sessions.remove(sessionId);
+          synchronized (xLockNotifier) {
+            for (String tableName : manager.s_lock_dict.get(sessionId)) {
+              Table table = database.get(tableName);
+              table.freeSLock(sessionId);
+              table.unpin();
+              xLockNotifier.notifyAll();
+            }
+            for (String tableName : manager.x_lock_dict.get(sessionId)) {
+              Table table = database.get(tableName);
+              table.freeXLock(sessionId);
+              table.unpin();
+              xLockNotifier.notifyAll();
+            }
+          }
+          manager.s_lock_dict.remove(sessionId);
+          manager.x_lock_dict.remove(sessionId);
+        }
+      } catch (OtherException ignored) {}
+      manager.quit(sessionId);
       return new DisconnectResp(StatusUtil.success());
     } catch (Exception e) {
       return new DisconnectResp(StatusUtil.fail(e.toString()));
@@ -184,7 +207,7 @@ public class IServiceHandler implements IService.Iface {
           // Perform insertion
           String[] columns = ins_plan.getColumns();
           for (String[] values : ins_plan.getValues()) {
-            database.insert(tableName, columns, values);
+            database.insert(tableName, columns, values, sessionId);
           }
 
           // Free x lock if autocommit
@@ -216,7 +239,7 @@ public class IServiceHandler implements IService.Iface {
           acquireXLock(manager, table, sessionId);
 
           // Perform deletion
-          String msg = database.delete(tableName, logic);
+          String msg = database.delete(tableName, logic, sessionId);
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
@@ -247,7 +270,7 @@ public class IServiceHandler implements IService.Iface {
           acquireXLock(manager, table, sessionId);
 
           // Perform update
-          String msg = database.update(tableName, columnName, value, logic);
+          String msg = database.update(tableName, columnName, value, logic, sessionId);
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
@@ -321,18 +344,11 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
 
-      case QUIT:
-        try {
-          manager.quit(sessionId);
-          return new ExecuteStatementResp(StatusUtil.success(), false);
-        } catch (Exception e) {
-          return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
-        }
-
       case BEGIN_TRANS:
         try {
           manager.getCurrent(sessionId);
           if (!manager.transaction_sessions.contains(sessionId)) {
+//            database.writeLog("begin##transaction", sessionId);
             manager.transaction_sessions.add(sessionId);
             manager.s_lock_dict.put(sessionId, new ArrayList<>());
             manager.x_lock_dict.put(sessionId, new ArrayList<>());
@@ -346,6 +362,7 @@ public class IServiceHandler implements IService.Iface {
         try {
           Database database = manager.getCurrent(sessionId);
           if (manager.transaction_sessions.contains(sessionId)) {
+//            database.writeLog("commit", sessionId);
             manager.transaction_sessions.remove(sessionId);
             synchronized (xLockNotifier) {
               for (String tableName : manager.s_lock_dict.get(sessionId)) {
@@ -377,10 +394,12 @@ public class IServiceHandler implements IService.Iface {
 
   public void acquireXLock(Manager manager, Table table, long sessionId)
       throws InterruptedException {
+    if (manager == null || manager.session_queue_x == null) {
+      throw new OtherException("Unable to acquire X lock");
+    }
+
     // Add to queue
-//    if (!manager.session_queue_x.contains(sessionId)) {
     manager.session_queue_x.add(sessionId);
-//    }
 
     // Waiting until x lock is acquired
     synchronized (xLockNotifier) {
@@ -405,17 +424,18 @@ public class IServiceHandler implements IService.Iface {
           }
         }
         xLockNotifier.wait();
-//      Thread.sleep(lockInterval);
       }
     }
   }
 
   public void acquireSLock(Manager manager, Table table, long sessionId)
       throws InterruptedException {
+    if (manager == null || manager.session_queue_s == null) {
+      throw new OtherException("Unable to acquire S lock");
+    }
+
     // Add to queue
-//    if (!manager.session_queue_s.contains(sessionId)) {
     manager.session_queue_s.add(sessionId);
-//    }
 
     // Waiting until s lock is acquired
     synchronized (xLockNotifier) {
@@ -436,7 +456,6 @@ public class IServiceHandler implements IService.Iface {
           }
         }
         xLockNotifier.wait();
-  //      Thread.sleep(lockInterval);
       }
     }
   }

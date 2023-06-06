@@ -159,13 +159,15 @@ public class Manager {
       String line = null;
       while ((line = bufferedReader.readLine()) != null) {
         createDatabaseIfNotExists(line, -1);
-        // readlog(line);
+//        get(line).loadLog();
       }
       reader.close();
       bufferedReader.close();
       currentDB = new HashMap<>();
-    } catch (Exception e) {
+    } catch (IOException e) {
       throw new IOFileException(DATA_DIRECTORY + "manager.data");
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 

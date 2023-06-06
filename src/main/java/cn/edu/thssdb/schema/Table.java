@@ -11,10 +11,7 @@ import cn.edu.thssdb.type.ComparerType;
 import cn.edu.thssdb.type.ResultType;
 import cn.edu.thssdb.utils.Pair;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -36,6 +33,9 @@ public class Table implements Iterable<Row> {
   int tp_lock = 0;
   public ArrayList<Long> xLockList; // 独占锁
   public ArrayList<Long> sLockList; // 共享锁
+
+//  public FileWriter logWriter = null;
+//  public long sessionId = -1;
 
   public Table(String databaseName, String tableName, Column[] columns) {
     ReentrantReadWriteLock lock; // 读写锁
@@ -129,6 +129,11 @@ public class Table implements Iterable<Row> {
       xLockList.remove(session);
     }
   }
+
+//  public void setLogWriter(FileWriter logWriter, long sessionId) {
+//    this.logWriter = logWriter;
+//    this.sessionId = sessionId;
+//  }
 
   private void recover() {
     // TODO
@@ -280,7 +285,10 @@ public class Table implements Iterable<Row> {
         return Long.parseLong(value);
       case STRING:
         // 假定 value 是被引号包围的，所以移除首尾的引号
-        return value.substring(1, value.length() - 1);
+        if (value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'')
+          return value.substring(1, value.length() - 1);
+        else
+          return value;
       default:
         return null;
     }
@@ -407,6 +415,10 @@ public class Table implements Iterable<Row> {
    */
   public void insert(String[] columns, String[] values, boolean isTransaction) {
     ArrayList<Entry> orderedEntries = prepareInsertion(columns, values);
+//    if (logWriter != null) {
+//      writeLog(null, orderedEntries);
+//    }
+
     // write to cache
     try {
       lock.writeLock().lock();
@@ -483,6 +495,10 @@ public class Table implements Iterable<Row> {
       orderedEntries.add(new Entry(the_entry_value));
     }
 
+//    if (logWriter != null) {
+//      writeLog(null, orderedEntries);
+//    }
+
     // write to cache
     try {
       lock.writeLock().lock();
@@ -510,6 +526,14 @@ public class Table implements Iterable<Row> {
     validatePrimaryEntry(primaryEntry);
 
     executeDelete(primaryEntry, isTransaction);
+  }
+
+  public void delete(String[] values) {
+    String primaryValue = values[primaryIndex];
+    Column column = this.columns.get(primaryIndex);
+    Comparable entryValue = ParseValue(column, primaryValue);
+    validateValue(column, entryValue);
+    delete(new Entry(entryValue));
   }
 
   /**
@@ -565,6 +589,9 @@ public class Table implements Iterable<Row> {
       JointRow the_row = new JointRow(row, this);
       if (the_logic == null || the_logic.getResult(the_row) == ResultType.TRUE) {
         Entry primary_entry = row.getEntries().get(primaryIndex);
+//        if (logWriter != null) {
+//          writeLog(row.getEntries(), null);
+//        }
         delete(primary_entry, isTransaction);
         count++;
       }
@@ -652,7 +679,8 @@ public class Table implements Iterable<Row> {
       JointRow the_row = new JointRow(row, this);
       if (the_logic.getResult(the_row) == ResultType.TRUE) {
         Entry primary_entry = row.getEntries().get(primaryIndex);
-        Column the_column = findColumn(column_name);
+        Pair<Integer, Column> c = findColumn(column_name);
+        Column the_column = c.right;
         if (the_column == null) {
           throw new AttributeNotFoundException(column_name);
         }
@@ -666,6 +694,23 @@ public class Table implements Iterable<Row> {
         ArrayList<Entry> the_entry_list = new ArrayList<>();
         the_entry_list.add(the_entry);
 
+//        if (logWriter != null) {
+//          // Construct a new row
+//          ArrayList<Entry> oldEntries = row.getEntries();
+//          ArrayList<Entry> newEntries = new ArrayList<>();
+//          int updateColumnIndex = c.left;
+//          int rowLength = row.getEntries().size();
+//          for (int i = 0; i < rowLength; i++) {
+//            if (i == updateColumnIndex) {
+//              newEntries.add(the_entry);
+//            }
+//            else {
+//              newEntries.add(oldEntries.get(i));
+//            }
+//          }
+//
+//          writeLog(oldEntries, newEntries);
+//        }
         update(primary_entry, the_column_list, the_entry_list, isTransaction);
         count++;
       }
@@ -674,19 +719,37 @@ public class Table implements Iterable<Row> {
     return "Updated " + count + " items.";
   }
 
+  public void update(String[] oldValues, String[] newValues) {
+    String primaryValue = oldValues[primaryIndex];
+    Column primaryColumn = this.columns.get(primaryIndex);
+    Comparable primaryEntryValue = ParseValue(primaryColumn, primaryValue);
+    validateValue(primaryColumn, primaryEntryValue);
+
+    ArrayList<Entry> orderedEntries = new ArrayList<>();
+    for (int i = 0; i < this.columns.size(); i++) {
+      Comparable the_entry_value = ParseValue(this.columns.get(i), newValues[i]);
+      validateValue(this.columns.get(i), the_entry_value);
+      orderedEntries.add(new Entry(the_entry_value));
+    }
+
+    update(new Entry(primaryEntryValue), columns, orderedEntries, false);
+  }
+
   /**
    * Finds the column with the specified name in the table.
    *
    * @param column_name The name of the column to find.
    * @return The Column object representing the found column, or null if not found.
    */
-  private Column findColumn(String column_name) {
+  private Pair<Integer, Column> findColumn(String column_name) {
+    int id = 0;
     for (Column column : this.columns) {
       if (column.getName().equals(column_name)) {
-        return column;
+        return new Pair<>(id, column);
       }
+      id++;
     }
-    return null;
+    return new Pair<>(-1, null);
   }
 
   /**
@@ -857,6 +920,15 @@ public class Table implements Iterable<Row> {
   public int getPrimaryIndex() {
     return this.primaryIndex;
   }
+
+//  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
+//    try {
+//      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
+//      logWriter.flush();
+//    } catch (IOException e) {
+//      e.printStackTrace();
+//    }
+//  }
 
   private class TableIterator implements Iterator<Row> {
     private Iterator<Pair<Entry, Row>> iterator;
