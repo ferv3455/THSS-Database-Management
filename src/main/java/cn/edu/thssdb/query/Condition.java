@@ -32,14 +32,14 @@ public class Condition {
    * @return The ResultType representing the result of the condition evaluation.
    */
   public ResultType GetResult(JointRow the_row) {
-//    if (mLeft.mType == ComparerType.NULL
-//        || mRight.mType == ComparerType.NULL
-//        || mLeft == null
-//        || mRight == null
-//        || mLeft.mValue == null
-//        || mRight.mValue == null) {
-//      return ResultType.UNKNOWN;
-//    } else {
+    if (mLeft.mType == ComparerType.NULL
+        || mRight.mType == ComparerType.NULL
+        || mLeft == null
+        || mRight == null
+        || mLeft.mValue == null
+        || mRight.mValue == null) {
+      return ResultType.UNKNOWN;
+    } else {
       Comparable value_left = mLeft.mValue;
       Comparable value_right = mRight.mValue;
       ComparerType type_left = mLeft.mType;
@@ -55,21 +55,15 @@ public class Condition {
         type_right = right_comparer.mType;
       }
 
-//      if (type_left == ComparerType.NULL
-//          || type_right == ComparerType.NULL
-//          || value_left == null
-//          || value_right == null) {
-//        return ResultType.UNKNOWN;
-//      }
-
-      if (value_left == null && value_right == null
-              && type_left == ComparerType.NULL && type_right == ComparerType.NULL) {
-        return ResultType.TRUE;
+      if (type_left == ComparerType.NULL
+          || type_right == ComparerType.NULL
+          || value_left == null
+          || value_right == null) {
+        return ResultType.UNKNOWN;
       }
 
       if (type_left != type_right) {
-        return ResultType.FALSE;
-//        throw new TypeMisMatchException(type_left, type_right);
+        throw new TypeMisMatchException(type_left, type_right);
       } else {
         boolean result = false;
         switch (mType) {
@@ -94,7 +88,7 @@ public class Condition {
         }
         return result ? ResultType.TRUE : ResultType.FALSE;
       }
-//    }
+    }
   }
 
   /**

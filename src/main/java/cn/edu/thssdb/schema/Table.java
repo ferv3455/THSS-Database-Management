@@ -31,11 +31,12 @@ public class Table implements Iterable<Row> {
   public Storage storage;
   private int primaryIndex;
   int tp_lock = 0;
+  private final Object lock_mutex = new Object();
   public ArrayList<Long> xLockList; // 独占锁
   public ArrayList<Long> sLockList; // 共享锁
 
-//  public FileWriter logWriter = null;
-//  public long sessionId = -1;
+  //  public FileWriter logWriter = null;
+  //  public long sessionId = -1;
 
   public Table(String databaseName, String tableName, Column[] columns) {
     ReentrantReadWriteLock lock; // 读写锁
@@ -57,83 +58,106 @@ public class Table implements Iterable<Row> {
   }
 
   public int getSLock(long session) {
-    // 初始化返回值为0：成功但未加锁
-    int result = 0;
+    synchronized (lock_mutex) {
+      // 初始化返回值为0：成功但未加锁
+      int result = 0;
 
-    // 如果当前为独占锁（tplock值为2）
-    if (tp_lock == 2) {
-      // 如果当前session已经拥有独占锁，不需要再加锁，返回0
-      if (!xLockList.contains(session)) {
-        // 如果其他session拥有独占锁，此时无法获取锁，返回-1
-        result = -1;
+      // 如果当前为独占锁（tplock值为2）
+      if (tp_lock == 2) {
+        // 如果当前session已经拥有独占锁，不需要再加锁，返回0
+        if (!xLockList.contains(session)) {
+          // 如果其他session拥有独占锁，此时无法获取锁，返回-1
+          result = -1;
+        }
+      } else {
+        // 如果当前为共享锁或无锁（tplock值为1或0）
+        if (!sLockList.contains(session)) {
+          // 如果当前session没有拥有共享锁，为其加上共享锁，并将tplock设为1
+          sLockList.add(session);
+          tp_lock = 1;
+          // 成功加锁，返回1
+          result = 1;
+        }
+        // 如果当前session已经拥有共享锁，无需再加锁，返回0
       }
-    } else {
-      // 如果当前为共享锁或无锁（tplock值为1或0）
-      if (!sLockList.contains(session)) {
-        // 如果当前session没有拥有共享锁，为其加上共享锁，并将tplock设为1
-        sLockList.add(session);
-        tp_lock = 1;
-        // 成功加锁，返回1
-        result = 1;
-      }
-      // 如果当前session已经拥有共享锁，无需再加锁，返回0
+      return result;
     }
-
-    return result;
   }
 
   public int getXLock(long session) {
-    int result = 0; // 初始状态设为0：成功但未加锁
+    synchronized (lock_mutex) {
+      int result = 0; // 初始状态设为0：成功但未加锁
 
-    // 根据tplock的状态，选择相应的操作
-    switch (tp_lock) {
-      case 2: // 如果当前为独占锁
-        if (!xLockList.contains(session)) { // 如果其他session拥有独占锁，此时无法获取锁
-          result = -1; // 获取锁失败
-        }
-        // 如果当前session已经拥有独占锁，不需要再加锁
-        break;
-      case 1: // 如果当前为共享锁
-        if (sLockList.size() == 1 && sLockList.contains(session)) { // 当前session共享锁
-          xLockList.add(session); // 为session加上独占锁
-          sLockList.remove(session);
-          tp_lock = 2;
-          result = 1; // 升级为独占锁
+      // 根据tplock的状态，选择相应的操作
+      switch (tp_lock) {
+        case 2: // 如果当前为独占锁
+          if (!xLockList.contains(session)) { // 如果其他session拥有独占锁，此时无法获取锁
+            result = -1; // 获取锁失败
+          }
+          // 如果当前session已经拥有独占锁，不需要再加锁
           break;
-        }
-        result = -1; // 无法获取其他session的共享锁，返回-1
-        break;
-      case 0: // 如果当前没有锁
-        xLockList.add(session); // 为session加上独占锁
-        tp_lock = 2; // 设置tplock为2，表示有独占锁
-        result = 1; // 成功获取锁，返回1
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid tplock value: " + tp_lock);
-    }
+        case 1: // 如果当前为共享锁
+          if (sLockList.size() == 1 && sLockList.contains(session)) { // 当前session共享锁
+            xLockList.add(session); // 为session加上独占锁
+            sLockList.remove(session);
+            tp_lock = 2;
+            result = 1; // 升级为独占锁
+            break;
+          }
+          result = -1; // 无法获取其他session的共享锁，返回-1
+          break;
+        case 0: // 如果当前没有锁
+          xLockList.add(session); // 为session加上独占锁
+          tp_lock = 2; // 设置tplock为2，表示有独占锁
+          result = 2; // 成功获取锁，返回1
+          break;
+        default:
+          throw new IllegalArgumentException("Invalid tplock value: " + tp_lock);
+      }
 
-    return result;
-  }
-
-  public void freeSLock(long session) {
-    if (sLockList.contains(session)) {
-      sLockList.remove(session);
-      // 根据sLockList是否为空来更新tplock的值
-      tp_lock = sLockList.isEmpty() ? 0 : 1;
-    }
-  }
-
-  public void freeXLock(long session) {
-    if (xLockList.contains(session)) {
-      tp_lock = 0;
-      xLockList.remove(session);
+      return result;
     }
   }
 
-//  public void setLogWriter(FileWriter logWriter, long sessionId) {
-//    this.logWriter = logWriter;
-//    this.sessionId = sessionId;
-//  }
+  public int freeSLock(long session) {
+    synchronized (lock_mutex) {
+      if (sLockList.contains(session)) {
+        sLockList.remove(session);
+        // 根据sLockList是否为空来更新tplock的值
+        tp_lock = sLockList.isEmpty() ? 0 : 1;
+        return 1;
+      }
+      return 0;
+    }
+  }
+
+  public int freeXLock(long session) {
+    synchronized (lock_mutex) {
+      if (xLockList.contains(session)) {
+        tp_lock = 0;
+        xLockList.remove(session);
+        return 1;
+      }
+      return 0;
+    }
+  }
+
+  public boolean holdSLock(long session) {
+    synchronized (lock_mutex) {
+      return sLockList.contains(session);
+    }
+  }
+
+  public boolean holdXLock(long session) {
+    synchronized (lock_mutex) {
+      return xLockList.contains(session);
+    }
+  }
+
+  //  public void setLogWriter(FileWriter logWriter, long sessionId) {
+  //    this.logWriter = logWriter;
+  //    this.sessionId = sessionId;
+  //  }
 
   private void recover() {
     // TODO
@@ -287,8 +311,7 @@ public class Table implements Iterable<Row> {
         // 假定 value 是被引号包围的，所以移除首尾的引号
         if (value.charAt(0) == '\'' && value.charAt(value.length() - 1) == '\'')
           return value.substring(1, value.length() - 1);
-        else
-          return value;
+        else return value;
       default:
         return null;
     }
@@ -415,9 +438,9 @@ public class Table implements Iterable<Row> {
    */
   public void insert(String[] columns, String[] values, boolean isTransaction) {
     ArrayList<Entry> orderedEntries = prepareInsertion(columns, values);
-//    if (logWriter != null) {
-//      writeLog(null, orderedEntries);
-//    }
+    //    if (logWriter != null) {
+    //      writeLog(null, orderedEntries);
+    //    }
 
     // write to cache
     try {
@@ -495,9 +518,9 @@ public class Table implements Iterable<Row> {
       orderedEntries.add(new Entry(the_entry_value));
     }
 
-//    if (logWriter != null) {
-//      writeLog(null, orderedEntries);
-//    }
+    //    if (logWriter != null) {
+    //      writeLog(null, orderedEntries);
+    //    }
 
     // write to cache
     try {
@@ -589,9 +612,9 @@ public class Table implements Iterable<Row> {
       JointRow the_row = new JointRow(row, this);
       if (the_logic == null || the_logic.getResult(the_row) == ResultType.TRUE) {
         Entry primary_entry = row.getEntries().get(primaryIndex);
-//        if (logWriter != null) {
-//          writeLog(row.getEntries(), null);
-//        }
+        //        if (logWriter != null) {
+        //          writeLog(row.getEntries(), null);
+        //        }
         delete(primary_entry, isTransaction);
         count++;
       }
@@ -694,23 +717,23 @@ public class Table implements Iterable<Row> {
         ArrayList<Entry> the_entry_list = new ArrayList<>();
         the_entry_list.add(the_entry);
 
-//        if (logWriter != null) {
-//          // Construct a new row
-//          ArrayList<Entry> oldEntries = row.getEntries();
-//          ArrayList<Entry> newEntries = new ArrayList<>();
-//          int updateColumnIndex = c.left;
-//          int rowLength = row.getEntries().size();
-//          for (int i = 0; i < rowLength; i++) {
-//            if (i == updateColumnIndex) {
-//              newEntries.add(the_entry);
-//            }
-//            else {
-//              newEntries.add(oldEntries.get(i));
-//            }
-//          }
-//
-//          writeLog(oldEntries, newEntries);
-//        }
+        //        if (logWriter != null) {
+        //          // Construct a new row
+        //          ArrayList<Entry> oldEntries = row.getEntries();
+        //          ArrayList<Entry> newEntries = new ArrayList<>();
+        //          int updateColumnIndex = c.left;
+        //          int rowLength = row.getEntries().size();
+        //          for (int i = 0; i < rowLength; i++) {
+        //            if (i == updateColumnIndex) {
+        //              newEntries.add(the_entry);
+        //            }
+        //            else {
+        //              newEntries.add(oldEntries.get(i));
+        //            }
+        //          }
+        //
+        //          writeLog(oldEntries, newEntries);
+        //        }
         update(primary_entry, the_column_list, the_entry_list, isTransaction);
         count++;
       }
@@ -921,14 +944,14 @@ public class Table implements Iterable<Row> {
     return this.primaryIndex;
   }
 
-//  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
-//    try {
-//      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
-//      logWriter.flush();
-//    } catch (IOException e) {
-//      e.printStackTrace();
-//    }
-//  }
+  //  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
+  //    try {
+  //      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
+  //      logWriter.flush();
+  //    } catch (IOException e) {
+  //      e.printStackTrace();
+  //    }
+  //  }
 
   private class TableIterator implements Iterator<Row> {
     private Iterator<Pair<Entry, Row>> iterator;

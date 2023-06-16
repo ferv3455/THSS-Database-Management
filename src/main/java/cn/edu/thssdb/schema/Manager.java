@@ -23,6 +23,8 @@ public class Manager {
   public ArrayList<Long> session_queue_x; // Session queue blocked by x-lock
   public HashMap<Long, ArrayList<String>> s_lock_dict; // 记录每个session取得了哪些表的s锁
   public HashMap<Long, ArrayList<String>> x_lock_dict; // 记录每个session取得了哪些表的x锁
+  private final Object lock_mutex = new Object();
+  private final Object queue_mutex = new Object();
   private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   public static Manager getInstance() {
@@ -38,6 +40,108 @@ public class Manager {
     session_queue_s = new ArrayList<>();
     session_queue_x = new ArrayList<>();
     recover();
+  }
+
+  public boolean addSLock(long sessionId, String tableName) {
+    synchronized (lock_mutex) {
+      ArrayList<String> tableList = s_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+      if (!tableList.contains(tableName)) {
+        tableList.add(tableName);
+        return true;
+      }
+      return false;
+    }
+  }
+
+  public boolean addXLock(long sessionId, String tableName) {
+    synchronized (lock_mutex) {
+      ArrayList<String> tableList = x_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+      if (!tableList.contains(tableName)) {
+        tableList.add(tableName);
+        return true;
+      }
+      return false;
+    }
+  }
+
+  public boolean removeSLock(long sessionId, String tableName) {
+    synchronized (lock_mutex) {
+      ArrayList<String> tableList = s_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+      return tableList.remove(tableName);
+    }
+  }
+
+  public boolean removeXLock(long sessionId, String tableName) {
+    synchronized (lock_mutex) {
+      ArrayList<String> tableList = x_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+      return tableList.remove(tableName);
+    }
+  }
+
+  public ArrayList<String> getSLocks(long sessionId) {
+    synchronized (lock_mutex) {
+      return s_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+    }
+  }
+
+  public ArrayList<String> getXLocks(long sessionId) {
+    synchronized (lock_mutex) {
+      return x_lock_dict.computeIfAbsent(sessionId, k -> new ArrayList<>());
+    }
+  }
+
+  public void dropSLocks(long sessionId) {
+    synchronized (lock_mutex) {
+      s_lock_dict.remove(sessionId);
+    }
+  }
+
+  public void dropXLocks(long sessionId) {
+    synchronized (lock_mutex) {
+      x_lock_dict.remove(sessionId);
+    }
+  }
+
+  public long queueXTop() {
+    synchronized (queue_mutex) {
+      if (session_queue_x.size() == 0) {
+        return -1;
+      }
+      return session_queue_x.get(0);
+    }
+  }
+
+  public long queueSTop() {
+    synchronized (queue_mutex) {
+      if (session_queue_s.size() == 0) {
+        return -1;
+      }
+      return session_queue_s.get(0);
+    }
+  }
+
+  public void queueXAdd(long sessionId) {
+    synchronized (queue_mutex) {
+      session_queue_x.add(sessionId);
+    }
+  }
+
+  public void queueSAdd(long sessionId) {
+    synchronized (queue_mutex) {
+      session_queue_s.add(sessionId);
+    }
+  }
+
+  public void queueXPop() {
+    synchronized (queue_mutex) {
+      session_queue_x.remove(0);
+    }
+  }
+
+  public void queueSPop() {
+    synchronized (queue_mutex) {
+      session_queue_s.remove(0);
+    }
   }
 
   public void createDatabaseIfNotExists(String name, long sessionId) {
@@ -159,7 +263,7 @@ public class Manager {
       String line = null;
       while ((line = bufferedReader.readLine()) != null) {
         createDatabaseIfNotExists(line, -1);
-//        get(line).loadLog();
+        //        get(line).loadLog();
       }
       reader.close();
       bufferedReader.close();

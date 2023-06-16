@@ -49,27 +49,12 @@ public class IServiceHandler implements IService.Iface {
       long sessionId = req.getSessionId();
       Manager manager = Manager.getInstance();
       try {
-        Database database = manager.getCurrent(sessionId);
         if (manager.transaction_sessions.contains(sessionId)) {
           manager.transaction_sessions.remove(sessionId);
-          synchronized (xLockNotifier) {
-            for (String tableName : manager.s_lock_dict.get(sessionId)) {
-              Table table = database.get(tableName);
-              table.freeSLock(sessionId);
-              table.unpin();
-              xLockNotifier.notifyAll();
-            }
-            for (String tableName : manager.x_lock_dict.get(sessionId)) {
-              Table table = database.get(tableName);
-              table.freeXLock(sessionId);
-              table.unpin();
-              xLockNotifier.notifyAll();
-            }
-          }
-          manager.s_lock_dict.remove(sessionId);
-          manager.x_lock_dict.remove(sessionId);
+          releaseAllLocks(manager, sessionId);
         }
-      } catch (OtherException ignored) {}
+      } catch (OtherException ignored) {
+      }
       manager.quit(sessionId);
       return new DisconnectResp(StatusUtil.success());
     } catch (Exception e) {
@@ -212,10 +197,7 @@ public class IServiceHandler implements IService.Iface {
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
-            synchronized (xLockNotifier) {
-              table.freeXLock(sessionId);
-              xLockNotifier.notifyAll();
-            }
+            releaseXLock(manager, table, sessionId);
           }
 
           // Response
@@ -243,10 +225,7 @@ public class IServiceHandler implements IService.Iface {
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
-            synchronized (xLockNotifier) {
-              table.freeXLock(sessionId);
-              xLockNotifier.notifyAll();
-            }
+            releaseXLock(manager, table, sessionId);
           }
 
           // Response
@@ -274,10 +253,7 @@ public class IServiceHandler implements IService.Iface {
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
-            synchronized (xLockNotifier) {
-              table.freeXLock(sessionId);
-              xLockNotifier.notifyAll();
-            }
+            releaseXLock(manager, table, sessionId);
           }
 
           // Response
@@ -313,12 +289,10 @@ public class IServiceHandler implements IService.Iface {
           QueryResult result = database.select(resultColumns, queryTable, logic);
 
           // Free s lock if autocommit
-          if (!manager.transaction_sessions.contains(sessionId)) {
-            synchronized (xLockNotifier) {
-              for (String tableName : tableNames) {
-                database.get(tableName).freeSLock(sessionId);
-                xLockNotifier.notifyAll();
-              }
+          boolean read_committed = true;
+          if (read_committed || !manager.transaction_sessions.contains(sessionId)) {
+            for (String tableName : tableNames) {
+              releaseSLock(manager, database.get(tableName), sessionId);
             }
           }
 
@@ -348,10 +322,8 @@ public class IServiceHandler implements IService.Iface {
         try {
           manager.getCurrent(sessionId);
           if (!manager.transaction_sessions.contains(sessionId)) {
-//            database.writeLog("begin##transaction", sessionId);
+            //            database.writeLog("begin##transaction", sessionId);
             manager.transaction_sessions.add(sessionId);
-            manager.s_lock_dict.put(sessionId, new ArrayList<>());
-            manager.x_lock_dict.put(sessionId, new ArrayList<>());
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction begins."), false);
         } catch (Exception e) {
@@ -360,26 +332,10 @@ public class IServiceHandler implements IService.Iface {
 
       case COMMIT:
         try {
-          Database database = manager.getCurrent(sessionId);
           if (manager.transaction_sessions.contains(sessionId)) {
-//            database.writeLog("commit", sessionId);
+            //            database.writeLog("commit", sessionId);
             manager.transaction_sessions.remove(sessionId);
-            synchronized (xLockNotifier) {
-              for (String tableName : manager.s_lock_dict.get(sessionId)) {
-                Table table = database.get(tableName);
-                table.freeSLock(sessionId);
-                table.unpin();
-                xLockNotifier.notifyAll();
-              }
-              for (String tableName : manager.x_lock_dict.get(sessionId)) {
-                Table table = database.get(tableName);
-                table.freeXLock(sessionId);
-                table.unpin();
-                xLockNotifier.notifyAll();
-              }
-            }
-            manager.s_lock_dict.remove(sessionId);
-            manager.x_lock_dict.remove(sessionId);
+            releaseAllLocks(manager, sessionId);
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction commited."), false);
         } catch (Exception e) {
@@ -398,34 +354,46 @@ public class IServiceHandler implements IService.Iface {
       throw new OtherException("Unable to acquire X lock");
     }
 
-    // Add to queue
-    manager.session_queue_x.add(sessionId);
+//    System.out.printf(
+//        "[before] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
 
-    // Waiting until x lock is acquired
-    synchronized (xLockNotifier) {
-      while (true) {
-        if (manager.session_queue_x.get(0) == sessionId) {
-          // first in the queue: acquire the lock
-          int lock = table.getXLock(sessionId);
-          if (lock >= 0) {
-            if (lock > 0) {
-              // new lock acquired
-              manager
-                      .x_lock_dict
-                      .computeIfAbsent(sessionId, k -> new ArrayList<>())
-                      .add(table.tableName);
-              manager
-                      .s_lock_dict
-                      .computeIfAbsent(sessionId, k -> new ArrayList<>())
-                      .remove(table.tableName);
+    // No locks: get X lock
+    // Holding S: upgrade
+    // Holding X: do nothing
+    int lock = table.getXLock(sessionId);
+    if (lock >= 0) {
+      if (lock > 1) {
+        // new lock acquired
+        manager.removeSLock(sessionId, table.tableName);
+      }
+      manager.addXLock(sessionId, table.tableName);
+    } else {
+      // Add to queue
+      manager.queueXAdd(sessionId);
+
+      // Waiting until x lock is acquired
+      synchronized (xLockNotifier) {
+        while (true) {
+          if (manager.queueXTop() == sessionId) {
+            // first in the queue: acquire the lock
+            lock = table.getXLock(sessionId);
+            if (lock >= 0) {
+              if (lock > 1) {
+                // new lock acquired
+                manager.removeSLock(sessionId, table.tableName);
+              }
+              manager.addXLock(sessionId, table.tableName);
+              manager.queueXPop();
+              break;
             }
-            manager.session_queue_x.remove(0);
-            break;
           }
+          xLockNotifier.wait();
         }
-        xLockNotifier.wait();
       }
     }
+
+//    System.out.printf(
+//        "[after] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
   }
 
   public void acquireSLock(Manager manager, Table table, long sessionId)
@@ -434,30 +402,115 @@ public class IServiceHandler implements IService.Iface {
       throw new OtherException("Unable to acquire S lock");
     }
 
-    // Add to queue
-    manager.session_queue_s.add(sessionId);
+//    System.out.printf(
+//        "[before] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
 
-    // Waiting until s lock is acquired
-    synchronized (xLockNotifier) {
-      while (true) {
-        if (manager.session_queue_s.get(0) == sessionId) {
-          // first in the queue: acquire the lock
-          int lock = table.getSLock(sessionId);
-          if (lock >= 0) {
-            if (lock > 0) {
-              // new lock acquired
-              manager
-                  .s_lock_dict
-                  .computeIfAbsent(sessionId, k -> new ArrayList<>())
-                  .add(table.tableName);
+    // No locks: get S lock
+    // Holding S/X: do nothing
+    int lock = table.getSLock(sessionId);
+    if (lock >= 0) {
+      if (lock > 0) {
+        // new lock acquired
+        manager.addSLock(sessionId, table.tableName);
+      }
+    } else {
+      // Add to queue
+      manager.queueSAdd(sessionId);
+
+      // Waiting until s lock is acquired
+      synchronized (xLockNotifier) {
+        while (true) {
+          if (manager.queueSTop() == sessionId) {
+            // first in the queue: acquire the lock
+            lock = table.getSLock(sessionId);
+            if (lock >= 0) {
+              manager.addSLock(sessionId, table.tableName);
+              manager.queueSPop();
+              break;
             }
-            manager.session_queue_s.remove(0);
-            break;
           }
+          xLockNotifier.wait();
         }
-        xLockNotifier.wait();
       }
     }
+
+//    System.out.printf(
+//        "[after] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+  }
+
+  public void releaseSLock(Manager manager, Table table, long sessionId) {
+    if (manager == null || manager.session_queue_s == null) {
+      throw new OtherException("Unable to acquire S lock");
+    }
+
+//    System.out.printf(
+//        "[before] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+
+    synchronized (xLockNotifier) {
+      if (table.freeSLock(sessionId) > 0) {
+        table.unpin();
+        manager.removeSLock(sessionId, table.tableName);
+        xLockNotifier.notifyAll();
+      }
+    }
+
+//    System.out.printf(
+//        "[after] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+  }
+
+  public void releaseXLock(Manager manager, Table table, long sessionId) {
+    if (manager == null) {
+      throw new OtherException("Unable to acquire S lock");
+    }
+
+//    System.out.printf(
+//        "[before] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+
+    synchronized (xLockNotifier) {
+      if (table.freeXLock(sessionId) > 0) {
+        table.unpin();
+        manager.removeXLock(sessionId, table.tableName);
+        xLockNotifier.notifyAll();
+      }
+    }
+
+//    System.out.printf(
+//        "[after] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+  }
+
+  public void releaseAllLocks(Manager manager, long sessionId) {
+    if (manager == null) {
+      throw new OtherException("Unable to acquire S lock");
+    }
+
+//    System.out.printf(
+//        "[before] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
+
+    Database database = manager.getCurrent(sessionId);
+
+    synchronized (xLockNotifier) {
+      for (String tableName : manager.getXLocks(sessionId)) {
+        Table table = database.get(tableName);
+        if (table.freeXLock(sessionId) > 0) {
+          table.unpin();
+          xLockNotifier.notifyAll();
+        }
+      }
+
+      for (String tableName : manager.getSLocks(sessionId)) {
+        Table table = database.get(tableName);
+        if (table.freeSLock(sessionId) > 0) {
+          table.unpin();
+          xLockNotifier.notifyAll();
+        }
+      }
+    }
+
+    manager.dropXLocks(sessionId);
+    manager.dropSLocks(sessionId);
+
+//    System.out.printf(
+//        "[after] Lock for %d: %s, %s\n", sessionId, manager.x_lock_dict, manager.s_lock_dict);
   }
 
   static class XLockNotifier {}
