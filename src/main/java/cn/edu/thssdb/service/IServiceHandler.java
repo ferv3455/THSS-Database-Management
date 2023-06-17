@@ -176,7 +176,7 @@ public class IServiceHandler implements IService.Iface {
                 Arrays.asList(
                     column.getName(),
                     column.getType().toString(),
-                    column.isNotNull() ? "YES" : "NO",
+                    column.isNotNull() ? "NO" : "YES",
                     column.getPrimary() > 0 ? "PRI" : ""));
           }
           return resp;

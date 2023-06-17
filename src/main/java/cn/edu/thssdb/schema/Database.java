@@ -89,7 +89,7 @@ public class Database {
       File metaFile = new File(metaFilename);
       if (metaFile.isFile()) {
         if (metaFile.delete()) {
-          System.out.println("File deleted successfully.");
+//          System.out.println("File deleted successfully.");
         } else {
           System.out.println("Failed to delete file.");
         }
@@ -122,7 +122,7 @@ public class Database {
         File metaFile = new File(filenamePrefix + table.tableName + ".data");
         if (metaFile.isFile()) { // 删除元数据文件
           if (metaFile.delete()) {
-            System.out.println("File deleted successfully.");
+//            System.out.println("File deleted successfully.");
           } else {
             System.out.println("Failed to delete file.");
           }

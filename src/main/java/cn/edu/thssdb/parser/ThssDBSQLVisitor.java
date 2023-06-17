@@ -88,31 +88,13 @@ public class ThssDBSQLVisitor extends SQLBaseVisitor<LogicalPlan> {
     int maxLength = typeNamePlan.getMaxLength();
 
     // Constraints
-    boolean pkDef = false;
-    boolean nnDef = false;
     for (SQLParser.ColumnConstraintContext cnstr_ctx : ctx.columnConstraint()) {
-      if (cnstr_ctx.K_PRIMARY() != null) {
-        if (!pkDef) {
-          pkDef = true;
-          continue;
-        }
-      } else if (cnstr_ctx.K_KEY() != null) {
-        if (pkDef) {
-          pkDef = false;
-          primary = 1;
-          continue;
-        }
-      } else if (cnstr_ctx.K_NOT() != null) {
-        if (!nnDef) {
-          nnDef = true;
-          continue;
-        }
-      } else if (cnstr_ctx.K_NULL() != null) {
-        if (nnDef) {
-          nnDef = false;
-          not_null = true;
-          continue;
-        }
+      if (cnstr_ctx.K_PRIMARY() != null && cnstr_ctx.K_KEY() != null) {
+        primary = 1;
+        continue;
+      } else if (cnstr_ctx.K_NOT() != null && cnstr_ctx.K_NULL() != null) {
+        not_null = true;
+        continue;
       }
       throw new OtherException();
     }

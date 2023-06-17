@@ -110,7 +110,7 @@ public class QueryResult implements Iterator<Row> {
               int i = metaInfo.columnFind(columnName);
               if (i >= 0) {
                 this.indices.add(offset + i);
-                this.attrs.add(columnName);
+                this.attrs.add(metaInfo.getFullName(i));
                 count++;
                 break;
               }

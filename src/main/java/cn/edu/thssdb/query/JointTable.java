@@ -1,6 +1,7 @@
 package cn.edu.thssdb.query;
 
 import cn.edu.thssdb.exception.KeyNotExistException;
+import cn.edu.thssdb.index.BPlusTreeIterator;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.schema.Table;
@@ -22,6 +23,8 @@ public class JointTable extends QueryTable implements Iterator<Row> {
   private final LinkedList<Row> mRowsToBeJoined;
 
   private final HashMap<Integer, Pair<Integer, Integer>> pkDependencies;
+  private boolean pkAcceleration = false;
+  private ArrayList<Iterator<Pair<Entry, Row>>> pkIterators = new ArrayList<>();
 
   public JointTable(ArrayList<Table> tables, Logic joinLogic) {
     super();
@@ -64,6 +67,16 @@ public class JointTable extends QueryTable implements Iterator<Row> {
           assert table1 >= 0 && table2 >= 0;
 
           if (mTables.get(table1).tableName.equals(comparer1.left) &&
+                  mTables.get(table1).getPrimaryName().equals(comparer1.right) &&
+                  mTables.get(table2).tableName.equals(comparer2.left) &&
+                  mTables.get(table2).getPrimaryName().equals(comparer2.right)) {
+            // do not need to iterate anymore
+            pkAcceleration = true;
+            mIterators.set(table1, null);
+            mIterators.set(table2, null);
+            return new Logic(null);
+          }
+          else if (mTables.get(table1).tableName.equals(comparer1.left) &&
                   mTables.get(table1).getPrimaryName().equals(comparer1.right)) {
             int id = mTables.get(table2).getColumnIndex(comparer2.right);
             pkDependencies.put(table1, new Pair<>(table2, id));
@@ -76,12 +89,6 @@ public class JointTable extends QueryTable implements Iterator<Row> {
             pkDependencies.put(table2, new Pair<>(table1, id));
             mIterators.set(table2, null);
             return new Logic(null);
-          }
-          else if (mTables.get(table1).tableName.equals(comparer1.left) &&
-                    mTables.get(table1).getPrimaryName().equals(comparer1.right) &&
-                    mTables.get(table2).tableName.equals(comparer2.left) &&
-                    mTables.get(table2).getPrimaryName().equals(comparer2.right)) {
-            // TODO: do not need to iterate any more
           }
         }
       }
@@ -151,55 +158,103 @@ public class JointTable extends QueryTable implements Iterator<Row> {
    * @return The next joint row, or null if there are no more rows to be joined.
    */
   private JointRow joinRows() {
-    if (mRowsToBeJoined.size() != mIterators.size()) {
-      mRowsToBeJoined.clear();
-      for (Iterator<Row> rowIterator : mIterators) {
-        if (rowIterator == null) {
-          mRowsToBeJoined.addLast(null);
-          continue;
-        }
-        if (!rowIterator.hasNext()) {
-          return null;
-        }
-        mRowsToBeJoined.addLast(rowIterator.next());
+    if (pkAcceleration) {
+      if (pkIterators.size() != mIterators.size()) {
+        pkIterators.add(mTables.get(0).storage.getIndexIter());
+        pkIterators.add(mTables.get(1).storage.getIndexIter());
       }
-    } else {
-      int currentIndex;
-      for (currentIndex = mIterators.size() - 1; currentIndex >= 0; currentIndex--) {
-        mRowsToBeJoined.removeLast();
-        if (mIterators.get(currentIndex) == null) {
-          continue;
-        }
 
-        if (!mIterators.get(currentIndex).hasNext()) {
-          mIterators.set(currentIndex, mTables.get(currentIndex).iterator());
-        } else {
-          break;
+      if (mRowsToBeJoined.size() != mIterators.size()) {
+        mRowsToBeJoined.clear();
+        mRowsToBeJoined.push(null);
+        mRowsToBeJoined.push(null);
+      }
+
+      Iterator<Pair<Entry, Row>> it1 = pkIterators.get(0);
+      Iterator<Pair<Entry, Row>> it2 = pkIterators.get(1);
+
+      Entry e1, e2;
+      if (it1.hasNext() && it2.hasNext()) {
+        e1 = it1.next().left;
+        e2 = it2.next().left;
+
+        while (true) {
+          int comp = e1.value.compareTo(e2.value);
+          if (comp < 0) {
+            if (!it1.hasNext()) {
+              return null;
+            }
+            e1 = it1.next().left;
+          } else if (comp > 0) {
+            if (!it2.hasNext()) {
+              return null;
+            }
+            e2 = it2.next().left;
+          } else {
+            mRowsToBeJoined.set(0, mTables.get(0).get(e1));
+            mRowsToBeJoined.set(1, mTables.get(1).get(e2));
+            break;
+          }
         }
       }
-      if (currentIndex < 0) {
+      else {
         return null;
       }
-      for (int i = currentIndex; i < mIterators.size(); i++) {
-        if (mIterators.get(i) == null) {
-          mRowsToBeJoined.addLast(null);
-          continue;
+    }
+    else {
+      if (mRowsToBeJoined.size() != mIterators.size()) {
+        // First time here
+        mRowsToBeJoined.clear();
+        for (Iterator<Row> rowIterator : mIterators) {
+          if (rowIterator == null) {
+            mRowsToBeJoined.push(null);
+            continue;
+          }
+          if (!rowIterator.hasNext()) {
+            return null;
+          }
+          mRowsToBeJoined.push(rowIterator.next());
         }
-        if (!mIterators.get(i).hasNext()) {
+      } else {
+        int currentIndex;
+        for (currentIndex = mIterators.size() - 1; currentIndex >= 0; currentIndex--) {
+          mRowsToBeJoined.pop();
+          if (mIterators.get(currentIndex) == null) {
+            continue;
+          }
+
+          if (!mIterators.get(currentIndex).hasNext()) {
+            mIterators.set(currentIndex, mTables.get(currentIndex).iterator());
+          } else {
+            break;
+          }
+        }
+        if (currentIndex < 0) {
           return null;
         }
-        mRowsToBeJoined.addLast(mIterators.get(i).next());
+        for (int i = currentIndex; i < mIterators.size(); i++) {
+          if (mIterators.get(i) == null) {
+            mRowsToBeJoined.push(null);
+            continue;
+          }
+          if (!mIterators.get(i).hasNext()) {
+            return null;
+          }
+          mRowsToBeJoined.push(mIterators.get(i).next());
+        }
       }
     }
+
+//    System.err.println(mRowsToBeJoined);
 
     // Add remaining rows from other tables
     if (!fillRowsByIndex(mRowsToBeJoined)) {
       mRowsToBeJoined.clear();
     }
-    else {
-      // Reverse list
-      Collections.reverse(mRowsToBeJoined);
-    }
+//    else {
+//      // Reverse list
+//      Collections.reverse(mRowsToBeJoined);
+//    }
 
     return new JointRow(mRowsToBeJoined, mTables);
   }
@@ -211,9 +266,9 @@ public class JointTable extends QueryTable implements Iterator<Row> {
     for (Map.Entry<Integer, Pair<Integer, Integer>> entry : pkDependencies.entrySet()) {
       int toTableId = entry.getKey();
       Pair<Integer, Integer> fromAttr = entry.getValue();
-      Entry value = row.get(fromAttr.left).getEntries().get(fromAttr.right);
+      Entry value = row.get(row.size() - 1 - fromAttr.left).getEntries().get(fromAttr.right);
       try {
-        row.set(toTableId, mTables.get(toTableId).get(new Entry(value.value)));
+        row.set(row.size() - 1 - toTableId, mTables.get(toTableId).get(new Entry(value.value)));
       } catch (KeyNotExistException ignored) {
         return false;
       }
