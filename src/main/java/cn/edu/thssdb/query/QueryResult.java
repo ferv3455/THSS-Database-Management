@@ -3,6 +3,7 @@ package cn.edu.thssdb.query;
 import cn.edu.thssdb.exception.*;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
+import cn.edu.thssdb.schema.Table;
 import cn.edu.thssdb.utils.Pair;
 
 import java.util.ArrayList;

@@ -142,18 +142,6 @@ public class Table implements Iterable<Row> {
     }
   }
 
-  public boolean holdSLock(long session) {
-    synchronized (lock_mutex) {
-      return sLockList.contains(session);
-    }
-  }
-
-  public boolean holdXLock(long session) {
-    synchronized (lock_mutex) {
-      return xLockList.contains(session);
-    }
-  }
-
   //  public void setLogWriter(FileWriter logWriter, long sessionId) {
   //    this.logWriter = logWriter;
   //    this.sessionId = sessionId;
@@ -174,7 +162,7 @@ public class Table implements Iterable<Row> {
       if (file != null && file.isFile()) {
         try {
           String fileName = file.getName();
-          String[] parts = fileName.substring(0, fileName.indexOf('.')).split("_");
+          String[] parts = fileName.substring(0, fileName.indexOf('.')).split("#_#");
 
           String databaseName = parts[1];
           String tableName = parts[2];
@@ -970,7 +958,12 @@ public class Table implements Iterable<Row> {
     @Override
     public Row next() {
       Entry entry = iterator.next().getKey();
-      return mStorage.getRow(entry, primaryIndex);
+      try {
+        return get(entry);
+      } catch (KeyNotExistException exception) {
+        System.err.printf("retrieving entry %s %s %s\n", tableName, entry, exception);
+        throw exception;
+      }
     }
   }
 

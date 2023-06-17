@@ -20,7 +20,7 @@ public class Page {
     this.entries = new ArrayList<>();
     this.lastVisit = System.currentTimeMillis();
     this.Pinned = false;
-    pageFile = "page_" + name + "_" + id + ".data";
+    pageFile = "page#_#" + name + "#_#" + id + ".data";
   }
 
   public int getId() {

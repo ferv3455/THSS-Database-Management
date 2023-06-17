@@ -74,7 +74,8 @@ public class JointTable extends QueryTable implements Iterator<Row> {
    * @return The next joint row, or null if there are no more rows to be joined.
    */
   private JointRow joinRows() {
-    if (mRowsToBeJoined.isEmpty()) {
+    if (mRowsToBeJoined.size() != mIterators.size()) {
+      mRowsToBeJoined.clear();
       for (Iterator<Row> rowIterator : mIterators) {
         if (!rowIterator.hasNext()) {
           return null;

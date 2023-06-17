@@ -147,7 +147,10 @@ public class Manager {
   public void createDatabaseIfNotExists(String name, long sessionId) {
     try {
       lock.writeLock().lock();
-      if (!databases.containsKey(name)) databases.put(name, new Database(name));
+      if (!databases.containsKey(name)) {
+        databases.put(name, new Database(name));
+        persist();
+      }
       if (sessionId >= 0) {
         if (currentDB.computeIfAbsent(sessionId, k -> null) == null) {
           currentDB.put(sessionId, get(name));
@@ -171,6 +174,7 @@ public class Manager {
         }
       }
       databases.remove(name);
+      persist();
     } finally {
       lock.writeLock().unlock();
     }
@@ -191,7 +195,7 @@ public class Manager {
       lock.writeLock().lock();
       Database db = databases.get(databaseName);
       db.quit();
-      persist();
+//      persist();
     } finally {
       lock.writeLock().unlock();
     }

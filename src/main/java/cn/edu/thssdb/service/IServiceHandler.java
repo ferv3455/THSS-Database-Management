@@ -73,7 +73,7 @@ public class IServiceHandler implements IService.Iface {
     long sessionId = req.getSessionId();
     LogicalPlan plan = null;
     try {
-      System.out.printf("%d %s\n", sessionId, req.statement);
+//      System.out.printf("%d %s\n", sessionId, req.statement);
       plan = LogicalGenerator.generate(req.statement);
     } catch (Exception e) {
       e.printStackTrace();
@@ -88,6 +88,7 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Created database %s.", name)), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -99,6 +100,7 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Dropped database %s.", name)), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -110,6 +112,7 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Database changed to %s.", name)), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -124,6 +127,7 @@ public class IServiceHandler implements IService.Iface {
           }
           return resp;
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -138,6 +142,7 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Created table %s.", name)), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -150,6 +155,7 @@ public class IServiceHandler implements IService.Iface {
           return new ExecuteStatementResp(
               StatusUtil.success(String.format("Dropped table %s.", name)), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -175,6 +181,7 @@ public class IServiceHandler implements IService.Iface {
           }
           return resp;
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -205,6 +212,7 @@ public class IServiceHandler implements IService.Iface {
               StatusUtil.success(String.format("%d row(s) inserted.", ins_plan.getValues().size())),
               false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -231,6 +239,7 @@ public class IServiceHandler implements IService.Iface {
           // Response
           return new ExecuteStatementResp(StatusUtil.success(msg), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -259,6 +268,7 @@ public class IServiceHandler implements IService.Iface {
           // Response
           return new ExecuteStatementResp(StatusUtil.success(msg), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -288,14 +298,6 @@ public class IServiceHandler implements IService.Iface {
           // Perform query
           QueryResult result = database.select(resultColumns, queryTable, logic);
 
-          // Free s lock if autocommit
-          boolean read_committed = true;
-          if (read_committed || !manager.transaction_sessions.contains(sessionId)) {
-            for (String tableName : tableNames) {
-              releaseSLock(manager, database.get(tableName), sessionId);
-            }
-          }
-
           // Show query result
           ExecuteStatementResp resp = new ExecuteStatementResp(StatusUtil.success(), true);
           for (String columnName : result.getColumnNames()) {
@@ -309,11 +311,21 @@ public class IServiceHandler implements IService.Iface {
             ArrayList<Entry> entries = row.getEntries();
             resp.addToRowList(entries.stream().map(Entry::toString).collect(Collectors.toList()));
           }
+
+          // Free s lock if autocommit
+          boolean read_committed = true;
+          if (read_committed || !manager.transaction_sessions.contains(sessionId)) {
+            for (String tableName : tableNames) {
+              releaseSLock(manager, database.get(tableName), sessionId);
+            }
+          }
+
           if (resp.getRowListSize() == 0) {
             return new ExecuteStatementResp(StatusUtil.success("Empty set."), false);
           }
           return resp;
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           e.printStackTrace();
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
@@ -327,6 +339,7 @@ public class IServiceHandler implements IService.Iface {
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction begins."), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
 
@@ -339,12 +352,13 @@ public class IServiceHandler implements IService.Iface {
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction commited."), false);
         } catch (Exception e) {
+          System.err.printf("%d %s\n", sessionId, req.statement);
           return new ExecuteStatementResp(StatusUtil.fail(e.toString()), false);
         }
 
       default:
-        System.out.println("[DEBUG] " + plan);
-        return new ExecuteStatementResp(StatusUtil.success(), false);
+        System.err.printf("%d %s\n", sessionId, req.statement);
+        return new ExecuteStatementResp(StatusUtil.fail("Unsupported statement"), false);
     }
   }
 

@@ -1,5 +1,6 @@
 package cn.edu.thssdb.query;
 
+import cn.edu.thssdb.exception.KeyNotExistException;
 import cn.edu.thssdb.schema.Entry;
 import cn.edu.thssdb.schema.Row;
 import cn.edu.thssdb.schema.Table;
@@ -127,9 +128,12 @@ public class SingleTable extends QueryTable implements Iterator<Row> {
     int primaryIndex = mTable.getPrimaryIndex();
     ColumnType type = mTable.getColumns().get(primaryIndex).getType();
     Comparable realValue = switchType(constValue);
-    Row row = mTable.get(new Entry(realValue));
-    JointRow theRow = new JointRow(row, mTable);
-    mQueue.add(theRow);
+    try {
+      Row row = mTable.get(new Entry(realValue));
+      JointRow theRow = new JointRow(row, mTable);
+      mQueue.add(theRow);
+    } catch (KeyNotExistException ignored) {
+    }
   }
 
   /**

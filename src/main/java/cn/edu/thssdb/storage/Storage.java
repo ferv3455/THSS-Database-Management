@@ -121,7 +121,7 @@ public class Storage {
 
   public Storage(String databaseName, String tableName) {
     this.pageNum = 0;
-    this.Name = databaseName + "_" + tableName;
+    this.Name = databaseName + "#_#" + tableName;
     this.index = new BPlusTree<>();
     this.pages = new HashMap<>();
   }
