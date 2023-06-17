@@ -267,7 +267,7 @@ public class Manager {
       String line = null;
       while ((line = bufferedReader.readLine()) != null) {
         createDatabaseIfNotExists(line, -1);
-        //        get(line).loadLog();
+        get(line).loadLog();
       }
       reader.close();
       bufferedReader.close();

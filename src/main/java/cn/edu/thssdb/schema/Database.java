@@ -2,6 +2,7 @@ package cn.edu.thssdb.schema;
 
 import cn.edu.thssdb.exception.DuplicateTableException;
 import cn.edu.thssdb.exception.IOFileException;
+import cn.edu.thssdb.exception.OtherException;
 import cn.edu.thssdb.exception.TableNotExistException;
 import cn.edu.thssdb.query.*;
 import cn.edu.thssdb.type.ColumnType;
@@ -19,21 +20,21 @@ public class Database {
   private String name;
   private HashMap<String, Table> tables;
   ReentrantReadWriteLock lock;
-  //  FileWriter logWriter;
+  FileWriter logWriter;
 
   public Database(String name) {
     this.name = name;
     this.tables = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
 
-    //    String filename = DATA_DIRECTORY + this.name + ".log";
-    //    try {
-    //      this.logWriter = new FileWriter(filename,true);
-    //    } catch (IOException e) {
-    //      e.printStackTrace();
-    //    }
+    String filename = DATA_DIRECTORY + this.name + ".log";
+    try {
+      this.logWriter = new FileWriter(filename,true);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
 
-    //    this.logWriter = null;
+//    this.logWriter = null;
     recover();
   }
 
@@ -128,24 +129,24 @@ public class Database {
           }
         }
 
-        //        if (logWriter != null) {
-        //          logWriter.close();
-        //          File logFile = new File(DATA_DIRECTORY + this.name + ".log");
-        //          if (logFile.isFile()) { // 删除元数据文件
-        //            if (logFile.delete()) {
-        //              System.out.println("Log file deleted successfully.");
-        //            } else {
-        //              System.out.println("Failed to delete log file.");
-        //            }
-        //          }
-        //        }
+        if (logWriter != null) {
+          logWriter.close();
+          File logFile = new File(DATA_DIRECTORY + this.name + ".log");
+          if (logFile.isFile()) { // 删除元数据文件
+            if (logFile.delete()) {
+              System.out.println("Log file deleted successfully.");
+            } else {
+              System.out.println("Failed to delete log file.");
+            }
+          }
+        }
 
         table.dropSelf(); // 删除数据文件
       }
       tables.clear();
       tables = null;
-      //    } catch (IOException e) {
-      //      throw new IOFileException(e.getMessage());
+    } catch (IOException e) {
+      throw new IOFileException(e.getMessage());
     } finally {
       lock.writeLock().unlock();
     }
@@ -204,9 +205,9 @@ public class Database {
         table.persist();
       }
       persist();
-      //      logWriter.flush();
-      //    } catch (IOException e) {
-      //      e.printStackTrace();
+      logWriter.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
     } finally {
       lock.writeLock().unlock();
     }
@@ -221,9 +222,16 @@ public class Database {
    * @param values An array of values corresponding to the column names (if provided) or the table's
    *     columns. These values will be inserted into the table.
    */
-  public void insert(String table_name, String[] column_names, String[] values, long sessionId) {
+  public void insert(String table_name, String[] column_names, String[] values, long sessionId, boolean log) {
     Table the_table = get(table_name);
-    //    the_table.setLogWriter(logWriter, sessionId);
+
+    if (log) {
+      the_table.setLogWriter(logWriter, sessionId);
+    }
+    else {
+      the_table.setLogWriter(null, -1);
+    }
+
     if (column_names == null) {
       the_table.insert(values, true);
     } else {
@@ -265,17 +273,27 @@ public class Database {
   }
 
   // 处理删除元素（逻辑）
-  public String delete(String table_name, Logic the_logic, long sessionId) {
+  public String delete(String table_name, Logic the_logic, long sessionId, boolean log) {
     Table the_table = get(table_name);
-    //    the_table.setLogWriter(logWriter, sessionId);
+    if (log) {
+      the_table.setLogWriter(logWriter, sessionId);
+    }
+    else {
+      the_table.setLogWriter(null, -1);
+    }
     return the_table.delete(the_logic, true);
   }
 
   // 更新元素
   public String update(
-      String table_name, String column_name, Comparer value, Logic the_logic, long sessionId) {
+      String table_name, String column_name, Comparer value, Logic the_logic, long sessionId, boolean log) {
     Table the_table = get(table_name);
-    //    the_table.setLogWriter(logWriter, sessionId);
+    if (log) {
+      the_table.setLogWriter(logWriter, sessionId);
+    }
+    else {
+      the_table.setLogWriter(null, -1);
+    }
     return the_table.update(column_name, value, the_logic, true);
   }
 
@@ -323,86 +341,129 @@ public class Database {
     return new JointTable(my_tables, logic);
   }
 
-  //  public void writeLog(String log, long sessionId) {
-  //    try {
-  //      logWriter.write(String.format("%d##%s\n", sessionId, log));
-  //      logWriter.flush();
-  //    } catch (IOException e) {
-  //      e.printStackTrace();
-  //    }
-  //  }
+  public void writeLog(String log, long sessionId) {
+    try {
+      logWriter.write(String.format("%d##%s\n", sessionId, log));
+      logWriter.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
-  //  public void loadLog() {
-  //    // Abort uncommitted modifications
-  //    String filename = DATA_DIRECTORY + this.name + ".log";
-  //    File file = new File(filename);
-  //    if (file.exists() && file.isFile()) {
-  //      System.out.println("Recovering from WAL log ...");
-  //      try {
-  //        InputStreamReader reader = new InputStreamReader(Files.newInputStream(file.toPath()));
-  //        BufferedReader bufferedReader = new BufferedReader(reader);
-  //        HashMap<Long, List<String>> logs = new HashMap<>(); // TODO: sequence lost for
-  // multi-session
-  //        String line;
-  //        while ((line = bufferedReader.readLine()) != null) {
-  //          String[] parts = line.split("##");
-  //          long sessionId = Long.parseLong(parts[0]);
-  //          if (parts.length == 3) {
-  //            // Begin transaction
-  //            logs.put(sessionId, new ArrayList<>());
-  //          } else if (parts.length == 2) {
-  //            // Commit
-  //            logs.remove(sessionId);
-  //          } else if (parts.length == 4) {
-  //            // Data
-  //            if (logs.containsKey(sessionId)) {
-  //              logs.get(sessionId).add(0, line);
-  //            }
-  //          } else {
-  //            throw new OtherException("WAL recovery error: unknown format");
-  //          }
-  //        }
-  //
-  //        bufferedReader.close();
-  //        reader.close();
-  //
-  //        for (Map.Entry<Long, List<String>> entry : logs.entrySet()) {
-  //          for (String log : entry.getValue()) {
-  //            System.out.println(log);
-  //            String[] parts = log.split("##");  // { sessionId, tableName, primaryKey, oldVal,
-  // newVal }
-  //            String tableName = parts[1];
-  //            String oldVal = parts[2];
-  //            String newVal = parts[3];
-  //
-  //
-  //            if (newVal.equals("null")) {
-  //              // Deletion
-  //              oldVal = oldVal.substring(1, oldVal.length() - 1);
-  //              get(tableName).insert(oldVal.split(", "));
-  //            }
-  //            else if (oldVal.equals("null")) {
-  //              // Insertion
-  //              newVal = newVal.substring(1, newVal.length() - 1);
-  //              get(tableName).delete(newVal.split(", "));
-  //            }
-  //            else {
-  //              // Update
-  //              oldVal = oldVal.substring(1, oldVal.length() - 1);
-  //              newVal = newVal.substring(1, newVal.length() - 1);
-  //              get(tableName).update(newVal.split(", "), oldVal.split(", "));
-  //            }
-  //          }
-  //        }
-  //
-  //        // Clear logs
-  //        FileWriter writer = new FileWriter(filename);
-  //        writer.close();
-  //      } catch (IOException e) {
-  //        throw new IOFileException(filename);
-  //      } catch (Exception e) {
-  //        e.printStackTrace();
-  //      }
-  //    }
-  //  }
+  public void loadLog() {
+    // Abort uncommitted modifications
+    String filename = DATA_DIRECTORY + this.name + ".log";
+    File file = new File(filename);
+    if (file.exists() && file.isFile()) {
+      System.out.println("Recovering from WAL log ...");
+      try {
+        InputStreamReader reader = new InputStreamReader(Files.newInputStream(file.toPath()));
+        BufferedReader bufferedReader = new BufferedReader(reader);
+
+        // Load logs
+        List<String> logs = new ArrayList<>(); // TODO: sequence lost for multi-session
+        String line;
+        while ((line = bufferedReader.readLine()) != null) {
+          logs.add(line);
+        }
+
+        bufferedReader.close();
+        reader.close();
+
+        // Redo from the top
+//        System.err.println("Redo");
+        ArrayList<Long> sessionIdList = new ArrayList<>();
+        for (String log : logs) {
+//          System.err.println(log);
+          String[] parts = log.split("##");
+
+          Long sessionId = Long.parseLong(parts[0]);
+          if (parts.length == 3) {
+            // Begin transaction
+            sessionIdList.add(sessionId);
+          } else if (parts.length == 2) {
+            // Commit / Abort
+            sessionIdList.remove(sessionId);
+          } else if (parts.length == 4) {
+            // Data
+            String tableName = parts[1];
+            String oldVal = parts[2];
+            String newVal = parts[3];
+
+            Table table = get(tableName);
+            table.setLogWriter(null, -1);
+
+            try {
+              if (newVal.equals("null")) {
+                // Deletion
+                oldVal = oldVal.substring(1, oldVal.length() - 1);
+                table.delete(oldVal.split(", "));
+              } else if (oldVal.equals("null")) {
+                // Insertion
+                newVal = newVal.substring(1, newVal.length() - 1);
+                table.insert(newVal.split(", "));
+              } else {
+                // Update
+                oldVal = oldVal.substring(1, oldVal.length() - 1);
+                newVal = newVal.substring(1, newVal.length() - 1);
+                table.update(oldVal.split(", "), newVal.split(", "));
+              }
+            } catch (Exception ignored) {
+            }
+          } else {
+            throw new OtherException("WAL recovery error: unknown format");
+          }
+        }
+
+        // Undo from the bottom
+        assert sessionIdList.size() <= 1;
+
+//        System.err.println("Undo");
+        if (sessionIdList.size() == 1) {
+          Collections.reverse(logs);
+          for (String log : logs) {
+//            System.err.println(log);
+            String[] parts = log.split("##");
+
+            Long sessionId = Long.parseLong(parts[0]);
+            if (sessionId.equals(sessionIdList.get(0))) {
+              if (parts.length == 3) {
+                // Begin transaction
+                writeLog("abort", sessionId);
+              } else if (parts.length == 4) {
+                // Data
+                String tableName = parts[1];
+                String oldVal = parts[2];
+                String newVal = parts[3];
+
+                Table table = get(tableName);
+                table.setLogWriter(logWriter, sessionId);
+
+                if (newVal.equals("null")) {
+                  // Deletion
+                  oldVal = oldVal.substring(1, oldVal.length() - 1);
+                  table.insert(oldVal.split(", "));
+                } else if (oldVal.equals("null")) {
+                  // Insertion
+                  newVal = newVal.substring(1, newVal.length() - 1);
+                  table.delete(newVal.split(", "));
+                } else {
+                  // Update
+                  oldVal = oldVal.substring(1, oldVal.length() - 1);
+                  newVal = newVal.substring(1, newVal.length() - 1);
+                  table.update(newVal.split(", "), oldVal.split(", "));
+                }
+              } else {
+                throw new OtherException("WAL recovery error: unknown format");
+              }
+            }
+          }
+        }
+      } catch (IOException e) {
+        throw new IOFileException(filename);
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+  }
 }

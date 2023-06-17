@@ -199,7 +199,7 @@ public class IServiceHandler implements IService.Iface {
           // Perform insertion
           String[] columns = ins_plan.getColumns();
           for (String[] values : ins_plan.getValues()) {
-            database.insert(tableName, columns, values, sessionId);
+            database.insert(tableName, columns, values, sessionId, true);
           }
 
           // Free x lock if autocommit
@@ -229,7 +229,7 @@ public class IServiceHandler implements IService.Iface {
           acquireXLock(manager, table, sessionId);
 
           // Perform deletion
-          String msg = database.delete(tableName, logic, sessionId);
+          String msg = database.delete(tableName, logic, sessionId, true);
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
@@ -258,7 +258,7 @@ public class IServiceHandler implements IService.Iface {
           acquireXLock(manager, table, sessionId);
 
           // Perform update
-          String msg = database.update(tableName, columnName, value, logic, sessionId);
+          String msg = database.update(tableName, columnName, value, logic, sessionId, true);
 
           // Free x lock if autocommit
           if (!manager.transaction_sessions.contains(sessionId)) {
@@ -332,9 +332,9 @@ public class IServiceHandler implements IService.Iface {
 
       case BEGIN_TRANS:
         try {
-          manager.getCurrent(sessionId);
+          Database database = manager.getCurrent(sessionId);
           if (!manager.transaction_sessions.contains(sessionId)) {
-            //            database.writeLog("begin##transaction", sessionId);
+          database.writeLog("begin##transaction", sessionId);
             manager.transaction_sessions.add(sessionId);
           }
           return new ExecuteStatementResp(StatusUtil.success("Transaction begins."), false);
@@ -345,8 +345,9 @@ public class IServiceHandler implements IService.Iface {
 
       case COMMIT:
         try {
+          Database database = manager.getCurrent(sessionId);
           if (manager.transaction_sessions.contains(sessionId)) {
-            //            database.writeLog("commit", sessionId);
+            database.writeLog("commit", sessionId);
             manager.transaction_sessions.remove(sessionId);
             releaseAllLocks(manager, sessionId);
           }

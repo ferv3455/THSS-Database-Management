@@ -35,8 +35,8 @@ public class Table implements Iterable<Row> {
   public ArrayList<Long> xLockList; // 独占锁
   public ArrayList<Long> sLockList; // 共享锁
 
-  //  public FileWriter logWriter = null;
-  //  public long sessionId = -1;
+  public FileWriter logWriter = null;
+  public long sessionId = -1;
 
   public Table(String databaseName, String tableName, Column[] columns) {
     ReentrantReadWriteLock lock; // 读写锁
@@ -142,10 +142,10 @@ public class Table implements Iterable<Row> {
     }
   }
 
-  //  public void setLogWriter(FileWriter logWriter, long sessionId) {
-  //    this.logWriter = logWriter;
-  //    this.sessionId = sessionId;
-  //  }
+    public void setLogWriter(FileWriter logWriter, long sessionId) {
+      this.logWriter = logWriter;
+      this.sessionId = sessionId;
+    }
 
   private void recover() {
     // TODO
@@ -426,9 +426,9 @@ public class Table implements Iterable<Row> {
    */
   public void insert(String[] columns, String[] values, boolean isTransaction) {
     ArrayList<Entry> orderedEntries = prepareInsertion(columns, values);
-    //    if (logWriter != null) {
-    //      writeLog(null, orderedEntries);
-    //    }
+    if (logWriter != null) {
+      writeLog(null, orderedEntries);
+    }
 
     // write to cache
     try {
@@ -506,9 +506,9 @@ public class Table implements Iterable<Row> {
       orderedEntries.add(new Entry(the_entry_value));
     }
 
-    //    if (logWriter != null) {
-    //      writeLog(null, orderedEntries);
-    //    }
+    if (logWriter != null) {
+      writeLog(null, orderedEntries);
+    }
 
     // write to cache
     try {
@@ -544,6 +544,19 @@ public class Table implements Iterable<Row> {
     Column column = this.columns.get(primaryIndex);
     Comparable entryValue = ParseValue(column, primaryValue);
     validateValue(column, entryValue);
+
+    if (logWriter != null) {
+      // Construct a new row
+      ArrayList<Entry> oldEntries = new ArrayList<>();
+      for (int i = 0; i < this.columns.size(); i++) {
+        Comparable the_entry_value = ParseValue(this.columns.get(i), values[i]);
+        validateValue(this.columns.get(i), the_entry_value);
+        oldEntries.add(new Entry(the_entry_value));
+      }
+
+      writeLog(oldEntries, null);
+    }
+
     delete(new Entry(entryValue));
   }
 
@@ -600,9 +613,9 @@ public class Table implements Iterable<Row> {
       JointRow the_row = new JointRow(row, this);
       if (the_logic == null || the_logic.getResult(the_row) == ResultType.TRUE) {
         Entry primary_entry = row.getEntries().get(primaryIndex);
-        //        if (logWriter != null) {
-        //          writeLog(row.getEntries(), null);
-        //        }
+        if (logWriter != null) {
+          writeLog(row.getEntries(), null);
+        }
         delete(primary_entry, isTransaction);
         count++;
       }
@@ -705,23 +718,23 @@ public class Table implements Iterable<Row> {
         ArrayList<Entry> the_entry_list = new ArrayList<>();
         the_entry_list.add(the_entry);
 
-        //        if (logWriter != null) {
-        //          // Construct a new row
-        //          ArrayList<Entry> oldEntries = row.getEntries();
-        //          ArrayList<Entry> newEntries = new ArrayList<>();
-        //          int updateColumnIndex = c.left;
-        //          int rowLength = row.getEntries().size();
-        //          for (int i = 0; i < rowLength; i++) {
-        //            if (i == updateColumnIndex) {
-        //              newEntries.add(the_entry);
-        //            }
-        //            else {
-        //              newEntries.add(oldEntries.get(i));
-        //            }
-        //          }
-        //
-        //          writeLog(oldEntries, newEntries);
-        //        }
+        if (logWriter != null) {
+          // Construct a new row
+          ArrayList<Entry> oldEntries = row.getEntries();
+          ArrayList<Entry> newEntries = new ArrayList<>();
+          int updateColumnIndex = c.left;
+          int rowLength = row.getEntries().size();
+          for (int i = 0; i < rowLength; i++) {
+            if (i == updateColumnIndex) {
+              newEntries.add(the_entry);
+            }
+            else {
+              newEntries.add(oldEntries.get(i));
+            }
+          }
+
+          writeLog(oldEntries, newEntries);
+        }
         update(primary_entry, the_column_list, the_entry_list, isTransaction);
         count++;
       }
@@ -741,6 +754,18 @@ public class Table implements Iterable<Row> {
       Comparable the_entry_value = ParseValue(this.columns.get(i), newValues[i]);
       validateValue(this.columns.get(i), the_entry_value);
       orderedEntries.add(new Entry(the_entry_value));
+    }
+
+    if (logWriter != null) {
+      // Construct a new row
+      ArrayList<Entry> oldEntries = new ArrayList<>();
+      for (int i = 0; i < this.columns.size(); i++) {
+        Comparable the_entry_value = ParseValue(this.columns.get(i), oldValues[i]);
+        validateValue(this.columns.get(i), the_entry_value);
+        oldEntries.add(new Entry(the_entry_value));
+      }
+
+      writeLog(oldEntries, orderedEntries);
     }
 
     update(new Entry(primaryEntryValue), columns, orderedEntries, false);
@@ -941,14 +966,14 @@ public class Table implements Iterable<Row> {
     return -1;
   }
 
-  //  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
-  //    try {
-  //      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
-  //      logWriter.flush();
-  //    } catch (IOException e) {
-  //      e.printStackTrace();
-  //    }
-  //  }
+  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
+    try {
+      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
+      logWriter.flush();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
   private class TableIterator implements Iterator<Row> {
     private Iterator<Pair<Entry, Row>> iterator;
