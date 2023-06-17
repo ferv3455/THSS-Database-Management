@@ -102,6 +102,9 @@ public class Logic {
   @Override
   public String toString() {
     if (mTerminal) {
+      if (this.mCondition == null) {
+        return "TRUE";
+      }
       return mCondition.toString();
     }
     return mLeft.toString() + " " + mType.toString() + " " + mRight.toString();

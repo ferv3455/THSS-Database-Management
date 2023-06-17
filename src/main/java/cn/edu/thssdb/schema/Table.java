@@ -932,6 +932,15 @@ public class Table implements Iterable<Row> {
     return this.primaryIndex;
   }
 
+  public int getColumnIndex(String name) {
+    for (int i = 0; i < this.columns.size(); i++) {
+      if (this.columns.get(i).getName().equals(name)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   //  public void writeLog(ArrayList<Entry> oldVal, ArrayList<Entry> newVal) {
   //    try {
   //      logWriter.write(String.format("%d##%s##%s##%s\n", sessionId, tableName, oldVal, newVal));
@@ -974,6 +983,8 @@ public class Table implements Iterable<Row> {
 
   // cancel all pinned pages
   public void unpin() {
+    lock.writeLock().lock();
     storage.unpin();
+    lock.writeLock().unlock();
   }
 }
